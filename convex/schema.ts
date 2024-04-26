@@ -6,33 +6,27 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { literals } from "convex-helpers/validators";
 
-const message = v.object({
-  content: v.string(),
-  role: literals("system", "user", "assistant"),
-});
-
 export default defineSchema(
   {
     users: defineTable({
       name: v.string(),
     }),
-    jobs: defineTable({
-      work: v.object({
-        responseId: v.id("messages"),
-      }),
-      status: literals("pending", "inProgress", "success", "failed"),
-      lastUpdate: v.number(),
-      workerId: v.optional(v.id("workers")),
-      janitorId: v.optional(v.id("_scheduled_functions")),
-    }).index("status", ["status", "lastUpdate"]),
-    failures: defineTable({
-      workerId: v.id("workers"),
-      jobId: v.id("jobs"),
+    sessions: defineTable({
+      userId: v.id("users"),
+      sessionId: v.string(),
+    }).index("sessionId", ["sessionId"]),
+    threads: defineTable({
+      uuid: v.string(),
+      summary: v.optional(v.string()),
+      summarizer: v.optional(v.id("_scheduled_functions")),
+      // summaryEmbeddingId: v.optional(v.id("threadSummaryEmbeddings")),
     }),
-    workers: defineTable({
-      apiKey: v.string(),
-      name: v.optional(v.string()),
-    }).index("apiKey", ["apiKey"]),
+    // .index("summaryEmbeddingId", ["summaryEmbeddingId"]),
+    threadMembers: defineTable({
+      threadId: v.id("threads"),
+      userId: v.id("users"),
+    }).index("userId", ["userId", "threadId"]),
+    // .index("threadId", ["threadId"]),
     messages: defineTable({
       message: v.string(),
       threadId: v.id("threads"),
@@ -44,31 +38,33 @@ export default defineSchema(
         v.object({
           role: v.literal("assistant"),
           context: v.array(v.id("messages")),
-          // model: v.optional(v.string()), // To support more than llama3
+          model: v.optional(v.string()),
         }),
         v.object({
           role: v.literal("user"),
           userId: v.id("users"),
         })
       ),
-      state: v.union(
-        v.literal("generating"),
-        v.literal("done"),
-        v.literal("archived")
-      ),
+      state: literals("success", "generating", "failed"),
     }).index("threadId", ["threadId"]),
-    threads: defineTable({
-      summary: v.optional(v.string()),
-      summarizer: v.optional(v.id("_scheduled_functions")),
-      // summaryEmbeddingId: v.optional(v.id("threadSummaryEmbeddings")),
-      userId: v.id("users"),
-    }).index("userId", ["userId"]),
-    // .index("summaryEmbeddingId", ["summaryEmbeddingId"]),
-    threadMembers: defineTable({
-      threadId: v.id("threads"),
-      userId: v.id("users"),
-    }).index("userId", ["userId"]),
-    // .index("threadId", ["threadId"]),
+    jobs: defineTable({
+      work: v.object({
+        responseId: v.id("messages"),
+        stream: v.boolean(),
+      }),
+      status: literals("pending", "inProgress", "success", "failed"),
+      lastUpdate: v.number(),
+      workerId: v.optional(v.id("workers")),
+      janitorId: v.optional(v.id("_scheduled_functions")),
+    }).index("status", ["status", "lastUpdate"]),
+    workers: defineTable({
+      apiKey: v.string(),
+      name: v.optional(v.string()),
+    }).index("apiKey", ["apiKey"]),
+    failures: defineTable({
+      workerId: v.id("workers"),
+      jobId: v.id("jobs"),
+    }),
   },
   // If you ever get an error about schema mismatch
   // between your data and your schema, and you cannot

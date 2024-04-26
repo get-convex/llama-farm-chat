@@ -9,22 +9,23 @@ import {
   query,
 } from "./_generated/server";
 import { customMutation } from "convex-helpers/server/customFunctions";
-import { asyncMap } from "convex-helpers";
+import { asyncMap, pruneNull } from "convex-helpers";
 import { Scheduler } from "convex/server";
-
-const Minute = 60_000;
-const WorkerDeadTimeout = 5 * Minute;
+import { WorkerDeadTimeout } from "../shared/config";
+import { literals } from "convex-helpers/validators";
 
 export async function addJob(
   ctx: { db: DatabaseWriter },
-  messageId: Id<"messages">
+  messageId: Id<"messages">,
+  stream: boolean
 ) {
   const message = await validateResponseMessage(ctx, messageId);
-  await ctx.db.insert("jobs", {
+  return ctx.db.insert("jobs", {
     lastUpdate: Date.now(),
     status: "pending",
     work: {
       responseId: message._id,
+      stream,
     },
   });
 }
@@ -67,8 +68,9 @@ async function validateResponseMessage(
   if (message.author.role !== "assistant") {
     throw new Error("A job should be for an assistant: " + message.author.role);
   }
-  return message as Doc<"messages"> & {
-    author: { role: "assistant"; context: Id<"messages">[] };
+  // This is a fancy way to tell TypeScript message.author.role === assistant
+  return message as Omit<Doc<"messages">, "author"> & {
+    author: Extract<Doc<"messages">["author"], { role: "assistant" }>;
   };
 }
 
@@ -93,18 +95,25 @@ export const giveMeWork = workerMutation({
     const message = await validateResponseMessage(ctx, job.work.responseId);
     return {
       jobId: job._id,
-      messages: asyncMap(message.author.context, (msg) =>
-        ctx.db.get(msg).then(
-          (message) =>
-            message && {
-              role: message.author.role,
-              content: message.message,
-            }
+      stream: job.work.stream,
+      model: message.author.model,
+      messages: pruneNull(
+        await asyncMap(message.author.context, (msg) =>
+          ctx.db.get(msg).then(simpleMessage)
         )
       ),
     };
   },
 });
+
+function simpleMessage(message: Doc<"messages"> | null) {
+  return (
+    message && {
+      content: message.message,
+      role: message.author.role,
+    }
+  );
+}
 
 async function scheduleJanitor(
   ctx: { scheduler: Scheduler },
@@ -169,23 +178,31 @@ async function validateJob(
   return job;
 }
 
-export const reportWork = workerMutation({
-  args: { jobId: v.id("jobs"), message: v.string() },
+export const submitWork = workerMutation({
+  args: {
+    jobId: v.id("jobs"),
+    message: v.string(),
+    state: literals("streaming", "success", "failed"),
+  },
   handler: async (ctx, args) => {
     const job = await validateJob(ctx, args.jobId, ctx.worker);
-    if (job.janitorId) await ctx.scheduler.cancel(job.janitorId);
-    await ctx.db.patch(job._id, {
-      lastUpdate: Date.now(),
-      status: "success",
-    });
-    const message = await ctx.db.get(job.work.responseId);
-    if (!message) {
-      throw new Error("Invalid response message ID");
+    const message = await validateResponseMessage(ctx, job.work.responseId);
+    switch (args.state) {
+      case "streaming":
+        message.message += args.message;
+        break;
+      case "success":
+      case "failed":
+        message.message = args.message;
+        message.state = args.state;
+        if (job.janitorId) await ctx.scheduler.cancel(job.janitorId);
+        await ctx.db.patch(job._id, {
+          lastUpdate: Date.now(),
+          status: "success",
+        });
+        break;
     }
-    await ctx.db.patch(message._id, {
-      message: args.message,
-      state: "done",
-    });
+    await ctx.db.replace(message._id, message);
   },
 });
 
