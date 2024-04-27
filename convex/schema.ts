@@ -20,7 +20,7 @@ export default defineSchema(
       summary: v.optional(v.string()),
       summarizer: v.optional(v.id("_scheduled_functions")),
       // summaryEmbeddingId: v.optional(v.id("threadSummaryEmbeddings")),
-    }),
+    }).index("uuid", ["uuid"]),
     // .index("summaryEmbeddingId", ["summaryEmbeddingId"]),
     threadMembers: defineTable({
       threadId: v.id("threads"),

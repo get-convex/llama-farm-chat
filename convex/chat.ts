@@ -3,7 +3,7 @@ import { Id } from "./_generated/dataModel";
 import { DatabaseReader } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { userMutation, userQuery } from "./users";
-import { asyncMap } from "convex-helpers";
+import { asyncMap, pruneNull } from "convex-helpers";
 import { completionModels, StreamResponses } from "../shared/config";
 import { literals } from "convex-helpers/validators";
 import { addJob } from "./workers";
@@ -20,12 +20,25 @@ export function messagesQuery(
 export const listThreads = userQuery({
   args: {},
   handler: async ({ userId, db }) => {
-    return userId
-      ? db
-          .query("threadMembers")
-          .withIndex("userId", (q) => q.eq("userId", userId))
-          .collect()
-      : [];
+    if (!userId) return [];
+    const threads = await asyncMap(
+      db
+        .query("threadMembers")
+        .withIndex("userId", (q) => q.eq("userId", userId))
+        .collect(),
+      async (m) => {
+        const thread = await db.get(m.threadId);
+        return (
+          thread && {
+            createdAt: thread._creationTime,
+            threadId: m.threadId,
+            uuid: thread.uuid,
+            summary: thread.summary,
+          }
+        );
+      }
+    );
+    return pruneNull(threads);
   },
 });
 
@@ -42,6 +55,42 @@ export const startThread = userMutation({
         author: { role: "system" },
         state: "success",
       });
+    }
+  },
+});
+
+export const joinThread = userMutation({
+  args: { uuid: v.string() },
+  handler: async (ctx, args) => {
+    const thread = await ctx.db
+      .query("threads")
+      .withIndex("uuid", (q) => q.eq("uuid", args.uuid))
+      .unique();
+    if (!thread) {
+      throw new Error("Thread not found.");
+    }
+    const existing = await ctx.db
+      .query("threadMembers")
+      .withIndex("userId", (q) =>
+        q.eq("userId", ctx.userId).eq("threadId", thread._id)
+      )
+      .unique();
+    if (existing) {
+      return;
+    }
+    await ctx.db.insert("threadMembers", {
+      threadId: thread._id,
+      userId: ctx.userId,
+    });
+  },
+});
+
+export const leaveThread = userMutation({
+  args: { threadId: v.id("threads") },
+  handler: async (ctx, args) => {
+    const existing = await checkThreadAccess(ctx, args.threadId, ctx.userId);
+    if (existing) {
+      await ctx.db.delete(existing._id);
     }
   },
 });
@@ -63,6 +112,7 @@ async function checkThreadAccess(
     // We don't want to leak information about the thread existing.
     throw new Error("Thread not found or it isn't yours.");
   }
+  return member;
 }
 
 export const getThreadMessages = userQuery({
@@ -93,6 +143,7 @@ export const sendMessage = userMutation({
     message: v.string(),
     threadId: v.id("threads"),
     model: literals(...completionModels),
+    skipAI: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await ctx.db.insert("messages", {
@@ -101,6 +152,7 @@ export const sendMessage = userMutation({
       author: { role: "user", userId: ctx.userId },
       state: "success",
     });
+    if (args.skipAI) return;
     const systemContext = await messagesQuery(ctx, args.threadId)
       .filter((q) => q.eq(q.field("author.role"), "system"))
       .order("desc")
