@@ -56,6 +56,7 @@ export default defineSchema(
       lastUpdate: v.number(),
       workerId: v.optional(v.id("workers")),
       janitorId: v.optional(v.id("_scheduled_functions")),
+      retries: v.number(),
     }).index("status", ["status", "lastUpdate"]),
     workers: defineTable({
       apiKey: v.string(),

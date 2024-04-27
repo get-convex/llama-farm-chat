@@ -11,7 +11,7 @@ import {
 import { customMutation } from "convex-helpers/server/customFunctions";
 import { asyncMap, pruneNull } from "convex-helpers";
 import { Scheduler } from "convex/server";
-import { WorkerDeadTimeout } from "../shared/config";
+import { MaxJobRetries, WorkerDeadTimeout } from "../shared/config";
 import { literals } from "convex-helpers/validators";
 
 export async function addJob(
@@ -27,6 +27,7 @@ export async function addJob(
       responseId: message._id,
       stream,
     },
+    retries: 0,
   });
 }
 
@@ -198,7 +199,17 @@ export const submitWork = workerMutation({
         if (job.janitorId) await ctx.scheduler.cancel(job.janitorId);
         await ctx.db.patch(job._id, {
           lastUpdate: Date.now(),
-          status: "success",
+          // We retry on failure, so it will be tried again.
+          // It is at the end of the queue currently
+          status:
+            args.state === "success"
+              ? "success"
+              : job.retries < MaxJobRetries
+                ? "pending"
+                : "failed",
+          retries:
+            job.retries +
+            (args.state === "failed" && job.retries < MaxJobRetries ? 1 : 0),
         });
         break;
     }
