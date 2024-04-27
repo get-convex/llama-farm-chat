@@ -221,19 +221,26 @@ export const signMeUp = internalMutation({
   args: { name: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const apiKey = crypto.randomUUID();
-    const workerId = await ctx.db.insert("workers", {
+    await ctx.db.insert("workers", {
       name: args.name,
       apiKey,
     });
-    return { workerId: workerId, apiKey };
+    return apiKey;
   },
 });
 
-export const refreshMyKey = workerMutation({
-  args: {},
-  handler: async (ctx) => {
+export const refreshMyKey = internalMutation({
+  args: { apiKey: v.string() },
+  handler: async (ctx, args) => {
     const uuid = crypto.randomUUID();
-    await ctx.db.patch(ctx.worker._id, { apiKey: uuid });
+    const worker = await ctx.db
+      .query("workers")
+      .withIndex("apiKey", (q) => q.eq("apiKey", args.apiKey))
+      .unique();
+    if (!worker) {
+      throw new Error("Invalid API key");
+    }
+    await ctx.db.patch(worker._id, { apiKey: uuid });
     return uuid;
   },
 });
