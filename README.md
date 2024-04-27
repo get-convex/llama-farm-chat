@@ -1,6 +1,6 @@
 # llama farmer
 
-Local LLM workers backing hosted AI Chat (with streaming)
+Local LLM workers backing a hosted AI Chat (with streaming)
 
 Featuring:
 
