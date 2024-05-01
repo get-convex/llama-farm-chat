@@ -43,19 +43,20 @@ export const listThreads = userQuery({
 });
 
 export const startThread = userMutation({
-  args: { systemPrompt: v.string() },
+  args: { systemPrompt: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const uuid = crypto.randomUUID();
     const threadId = await ctx.db.insert("threads", { uuid });
     await ctx.db.insert("threadMembers", { threadId, userId: ctx.userId });
     if (args.systemPrompt) {
       await ctx.db.insert("messages", {
-        message: args.systemPrompt,
+        message: args.systemPrompt || "You are my friend with witty quips",
         threadId,
         author: { role: "system" },
         state: "success",
       });
     }
+    return threadId;
   },
 });
 
@@ -126,9 +127,16 @@ export const getThreadMessages = userQuery({
       ...results,
       page: await asyncMap(results.page, async (msg) => {
         // const image = m.imageId && (await ctx.db.get(m.imageId));
+        const user =
+          msg.author.role === "user"
+            ? await ctx.db.get(msg.author.userId)
+            : null;
+        const model = msg.author.role === "assistant" ? msg.author.model : null;
         return {
           // imageUrl:
           //   (image && (await ctx.storage.getUrl(image.storageId))) ?? null,
+          userId: user?._id,
+          name: user?.name || model || msg.author.role,
           message: msg.message,
           role: msg.author.role,
           state: msg.state,

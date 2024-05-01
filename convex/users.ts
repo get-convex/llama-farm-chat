@@ -38,6 +38,14 @@ export const userMutation = customMutation(mutation, {
   },
 });
 
+export const me = userQuery({
+  args: {},
+  handler: async (ctx) => {
+    if (!ctx.userId) return null;
+    return ctx.db.get(ctx.userId);
+  },
+});
+
 export const updateName = userMutation({
   args: { name: v.string() },
   handler: async (ctx, args) => {
