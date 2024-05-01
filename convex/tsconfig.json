@@ -17,7 +17,12 @@
     "module": "ESNext",
     "moduleResolution": "Node",
     "isolatedModules": true,
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "@shared/*": ["../shared/*"],
+      "@convex/*": ["./*"]
+    }
+
   },
   "include": ["./**/*", "../shared/config.ts"],
   "exclude": ["./_generated"]

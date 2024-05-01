@@ -23,7 +23,9 @@
     "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@shared/*": ["./shared/*"],
+      "@convex/*": ["./convex/*"]
     }
   },
   "references": [{ "path": "./tsconfig.node.json" }]
