@@ -11,6 +11,11 @@ module.exports = {
     },
     extend: {
       colors: {
+        "my-white-baja": "#FFF8D1",
+        "my-light-tusk": "#F0F3BD",
+        "my-neutral-sprout": "#C8D9AF",
+        "my-light-green": "#7FAC5D",
+        "my-dark-green": "#3E5A27",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
