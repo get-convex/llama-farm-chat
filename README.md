@@ -136,6 +136,10 @@ You can then change your package.json scripts from `convex dev ...` to `just con
 the normal commands `npm run dev` will work. To run other Convex commands, swap `npx` for `just`:
 e.g. `just convex run ...` instead of `npx convex run ...`.
 
+The Justfile has some smart logic to switch between the local backend and cloud based on whether
+your VITE_CONVEX_URL is pointing to a cloud address, so you can just comment/uncomment those
+to switch back and forth.
+
 ### Revoking API keys
 
 - You can see API keys by going to the [Convex dashboard](https://dashboard.convex.dev/)
