@@ -25,7 +25,9 @@ export default defineSchema(
     threadMembers: defineTable({
       threadId: v.id("threads"),
       userId: v.id("users"),
-    }).index("userId", ["userId", "threadId"]),
+    })
+      .index("threadId", ["threadId", "userId"])
+      .index("userId", ["userId"]),
     // .index("threadId", ["threadId"]),
     messages: defineTable({
       message: v.string(),

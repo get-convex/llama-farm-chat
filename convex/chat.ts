@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 import { DatabaseReader } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { userMutation, userQuery } from "./users";
@@ -8,32 +8,33 @@ import { completionModels, StreamResponses } from "@shared/config";
 import { literals } from "convex-helpers/validators";
 import { addJob } from "./workers";
 
-export function messagesQuery(
-  ctx: { db: DatabaseReader },
-  threadId: Id<"threads">
-) {
-  return ctx.db
-    .query("messages")
-    .withIndex("threadId", (q) => q.eq("threadId", threadId));
-}
-
 export const listThreads = userQuery({
   args: {},
-  handler: async ({ userId, db }) => {
-    if (!userId) return [];
+  handler: async (ctx) => {
+    if (!ctx.userId) return [];
     const threads = await asyncMap(
-      db
+      ctx.db
         .query("threadMembers")
-        .withIndex("userId", (q) => q.eq("userId", userId))
+        .withIndex("userId", (q) => q.eq("userId", ctx.userId!))
+        .order("desc")
         .collect(),
       async (m) => {
-        const thread = await db.get(m.threadId);
+        const thread = await ctx.db.get(m.threadId);
+        let description = thread?.summary;
+        if (!description) {
+          description = (
+            await messagesQuery(ctx, m.threadId)
+              .order("desc")
+              .filter((q) => q.neq(q.field("author.role"), "system"))
+              .filter((q) => q.eq(q.field("state"), "success"))
+              .first()
+          )?.message;
+        }
         return (
           thread && {
             createdAt: thread._creationTime,
-            threadId: m.threadId,
             uuid: thread.uuid,
-            summary: thread.summary,
+            description,
           }
         );
       }
@@ -56,71 +57,42 @@ export const startThread = userMutation({
         state: "success",
       });
     }
-    return threadId;
+    return uuid;
   },
 });
 
 export const joinThread = userMutation({
   args: { uuid: v.string() },
   handler: async (ctx, args) => {
-    const thread = await ctx.db
-      .query("threads")
-      .withIndex("uuid", (q) => q.eq("uuid", args.uuid))
-      .unique();
-    if (!thread) {
-      throw new Error("Thread not found.");
+    const thread = await threadFromUuid(ctx, args.uuid);
+    const existing = await getMembership(ctx, thread._id, ctx.userId);
+    if (!existing) {
+      await ctx.db.insert("threadMembers", {
+        threadId: thread._id,
+        userId: ctx.userId,
+      });
     }
-    const existing = await ctx.db
-      .query("threadMembers")
-      .withIndex("userId", (q) =>
-        q.eq("userId", ctx.userId).eq("threadId", thread._id)
-      )
-      .unique();
-    if (existing) {
-      return;
-    }
-    await ctx.db.insert("threadMembers", {
-      threadId: thread._id,
-      userId: ctx.userId,
-    });
   },
 });
 
 export const leaveThread = userMutation({
-  args: { threadId: v.id("threads") },
+  args: { uuid: v.string() },
   handler: async (ctx, args) => {
-    const existing = await checkThreadAccess(ctx, args.threadId, ctx.userId);
+    const thread = await threadFromUuid(ctx, args.uuid);
+    const existing = await getMembership(ctx, thread._id, ctx.userId);
     if (existing) {
       await ctx.db.delete(existing._id);
     }
   },
 });
 
-async function checkThreadAccess(
-  ctx: { db: DatabaseReader },
-  threadId: Id<"threads">,
-  userId?: Id<"users">
-) {
-  const member =
-    userId &&
-    (await ctx.db
-      .query("threadMembers")
-      .withIndex("userId", (q) =>
-        q.eq("userId", userId).eq("threadId", threadId)
-      )
-      .unique());
-  if (!member) {
-    // We don't want to leak information about the thread existing.
-    throw new Error("Thread not found or it isn't yours.");
-  }
-  return member;
-}
-
 export const getThreadMessages = userQuery({
-  args: { threadId: v.id("threads"), paginationOpts: paginationOptsValidator },
+  args: { uuid: v.string(), paginationOpts: paginationOptsValidator },
   async handler(ctx, args) {
-    await checkThreadAccess(ctx, args.threadId, ctx.userId);
-    const results = await messagesQuery(ctx, args.threadId)
+    const thread = await threadFromUuid(ctx, args.uuid);
+    // All chats are public for now, if you know the uuid.
+    // await checkThreadAccess(ctx, thread._id, ctx.userId);
+    const results = await messagesQuery(ctx, thread._id)
       .order("desc")
       .paginate(args.paginationOpts);
     return {
@@ -149,24 +121,25 @@ export const getThreadMessages = userQuery({
 export const sendMessage = userMutation({
   args: {
     message: v.string(),
-    threadId: v.id("threads"),
+    uuid: v.string(),
     model: literals(...completionModels),
     skipAI: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    const { _id: threadId } = await threadFromUuid(ctx, args.uuid);
     await ctx.db.insert("messages", {
       message: args.message,
-      threadId: args.threadId,
+      threadId,
       author: { role: "user", userId: ctx.userId },
       state: "success",
     });
     if (args.skipAI) return;
-    const systemContext = await messagesQuery(ctx, args.threadId)
+    const systemContext = await messagesQuery(ctx, threadId)
       .filter((q) => q.eq(q.field("author.role"), "system"))
       .order("desc")
       .first();
     const messageContext = (
-      await messagesQuery(ctx, args.threadId)
+      await messagesQuery(ctx, threadId)
         .filter((q) => q.neq(q.field("author.role"), "system"))
         .filter((q) => q.eq(q.field("state"), "success"))
         .order("desc")
@@ -186,8 +159,47 @@ export const sendMessage = userMutation({
       message: "...",
       author,
       state: "generating",
-      threadId: args.threadId,
+      threadId,
     });
     await addJob(ctx, messageId, StreamResponses);
   },
 });
+
+async function threadFromUuid(
+  ctx: { db: DatabaseReader },
+  uuid: string
+): Promise<Doc<"threads">> {
+  const thread = await ctx.db
+    .query("threads")
+    .withIndex("uuid", (q) => q.eq("uuid", uuid))
+    .unique();
+  if (!thread) {
+    throw new Error("Thread not found.");
+  }
+  return thread;
+}
+
+async function getMembership(
+  ctx: { db: DatabaseReader },
+  threadId: Id<"threads">,
+  userId?: Id<"users">
+) {
+  return (
+    userId &&
+    (await ctx.db
+      .query("threadMembers")
+      .withIndex("threadId", (q) =>
+        q.eq("threadId", threadId).eq("userId", userId)
+      )
+      .unique())
+  );
+}
+
+export function messagesQuery(
+  ctx: { db: DatabaseReader },
+  threadId: Id<"threads">
+) {
+  return ctx.db
+    .query("messages")
+    .withIndex("threadId", (q) => q.eq("threadId", threadId));
+}

@@ -32,6 +32,7 @@ export const userMutation = customMutation(mutation, {
       userId = user.userId;
     } else {
       userId = await ctx.db.insert("users", { name: "" });
+      await ctx.db.insert("sessions", { userId, sessionId: args.sessionId });
     }
 
     return { ctx: { userId }, args: {} };
