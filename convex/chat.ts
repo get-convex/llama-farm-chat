@@ -30,11 +30,24 @@ export const listThreads = userQuery({
               .first()
           )?.message;
         }
+        const names = (
+          await asyncMap(
+            await ctx.db
+              .query("threadMembers")
+              .withIndex("threadId", (q) => q.eq("threadId", m.threadId))
+              .collect(),
+            async (m) => {
+              const user = await ctx.db.get(m.userId);
+              return user && user.name;
+            }
+          )
+        ).concat("🦙");
         return (
           thread && {
             createdAt: thread._creationTime,
             uuid: thread.uuid,
             description,
+            names,
           }
         );
       }
@@ -104,14 +117,27 @@ export const getThreadMessages = userQuery({
             ? await ctx.db.get(msg.author.userId)
             : null;
         const model = msg.author.role === "assistant" ? msg.author.model : null;
+        let job: Doc<"jobs"> | null = null;
+        let sentAt = msg._creationTime;
+        if (msg.state === "generating") {
+          job = await ctx.db
+            .query("jobs")
+            .withIndex("responseId", (q) => q.eq("work.responseId", msg._id))
+            .first();
+          if (job) {
+            sentAt = job.lastUpdate;
+          }
+        }
         return {
           // imageUrl:
           //   (image && (await ctx.storage.getUrl(image.storageId))) ?? null,
+          id: msg._id,
           userId: user?._id,
           name: user?.name || model || msg.author.role,
           message: msg.message,
           role: msg.author.role,
-          state: msg.state,
+          state: job?.status ?? msg.state,
+          sentAt,
         };
       }),
     };

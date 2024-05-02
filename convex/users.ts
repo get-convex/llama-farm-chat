@@ -18,6 +18,11 @@ export const userQuery = customQuery(query, {
   },
 });
 
+const Emojis =
+  "😀 😃 😄 😁 😆 😅 😂 🤣 🥲 🥹 😊 😇 🙂 🙃 😉 😌 😍 🥰 😘 😗 😙 😚 😋 😛 😝 😜 🤪 😎 🥸 🤩 🥳 😏 😳 🤔 🫢 🤭 🤫 😶 🫠 😮 🤤 😵‍💫 🥴 🤑 🤠".split(
+    " "
+  );
+
 export const userMutation = customMutation(mutation, {
   args: {
     sessionId: v.string(),
@@ -31,7 +36,9 @@ export const userMutation = customMutation(mutation, {
     if (user) {
       userId = user.userId;
     } else {
-      userId = await ctx.db.insert("users", { name: "" });
+      userId = await ctx.db.insert("users", {
+        name: Emojis[Math.floor(Math.random() * Emojis.length)],
+      });
       await ctx.db.insert("sessions", { userId, sessionId: args.sessionId });
     }
 
