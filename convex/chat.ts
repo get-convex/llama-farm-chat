@@ -156,7 +156,7 @@ export const sendMessage = userMutation({
       context: context.map((m) => m._id),
     } as const;
     const messageId = await ctx.db.insert("messages", {
-      message: "...",
+      message: "",
       author,
       state: "generating",
       threadId,

@@ -26,6 +26,7 @@ import { cn } from "./lib/utils";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { Input } from "./components/ui/input";
 dayjs.extend(relativeTime);
 
 function Messages() {
@@ -105,7 +106,9 @@ function Messages() {
                         : message.name[0].toUpperCase()}
                     </span>
                     <div className="bg-my-neutral-sprout dark:bg-my-light-green dark:text-my-light-tusk p-3 rounded-md max-w-[80%]">
-                      <p className="text-sm">{message.message}</p>
+                      <p className="text-sm whitespace-break-spaces">
+                        {message.message || "..."}
+                      </p>
                     </div>
                   </div>
                 )
@@ -148,6 +151,7 @@ function SendMessage() {
       e.preventDefault();
       if (!uuid || !messageToSend) return;
       const message = messageToSend;
+      setMessageToSend("");
       sendMessage({ message, model: "llama3", uuid })
         // .then(() => {})
         .catch((e) => {
@@ -160,7 +164,8 @@ function SendMessage() {
 
   return (
     <form className="p-2 mt-4 flex items-center gap-2" onSubmit={sendSubmit}>
-      <Textarea
+      <Input
+        type="text"
         value={messageToSend}
         onChange={(e) => setMessageToSend(e.target.value)}
         className="flex-1 resize-none   bg-my-neutral-sprout dark:placeholder-my-dark-green dark:text-my-light-tusk dark:bg-my-light-green"

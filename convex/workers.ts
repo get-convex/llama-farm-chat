@@ -200,7 +200,7 @@ export const submitWork = workerMutation({
         break;
       case "success":
       case "failed":
-        message.message = args.message;
+        message.message += args.message;
         message.state = args.state;
         if (job.janitorId) await ctx.scheduler.cancel(job.janitorId);
         await ctx.db.patch(job._id, {
