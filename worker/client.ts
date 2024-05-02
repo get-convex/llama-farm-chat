@@ -1,8 +1,10 @@
-import { api } from "../convex/_generated/api";
+import inquirer from "inquirer";
 import { ConvexClient } from "convex/browser";
 import { FunctionReturnType } from "convex/server";
+import { api } from "../convex/_generated/api";
 import { WorkerHeartbeatInterval, completionModels } from "../shared/config";
 import { chatCompletion, LLM_CONFIG } from "../shared/llm";
+import { appendFile } from "fs";
 
 function waitForWork(client: ConvexClient) {
   return new Promise<void>((resolve, reject) => {
@@ -110,9 +112,37 @@ function hasDelimeter(response: string) {
 }
 
 async function main() {
-  const apiKey = process.env.WORKER_API_KEY;
-  const convexUrl = process.env.VITE_CONVEX_URL;
+  const key = process.env.WORKER_API_KEY || undefined;
+  const url = process.env.VITE_CONVEX_URL || undefined;
+  const answers = await inquirer.prompt(
+    [
+      {
+        type: "input",
+        name: "convexUrl",
+        message: ".convex.cloud URL?",
+      },
+      {
+        type: "input",
+        name: "apiKey",
+        message: "Worker API key?",
+      },
+    ],
+    { apiKey: key, convexUrl: url }
+  );
+  const { apiKey, convexUrl } = answers;
   console.log(apiKey, convexUrl);
+  if (!key) {
+    appendFile(".env.local", `\nWORKER_API_KEY=${apiKey}\n`, (err) => {
+      if (err) throw err;
+      console.log("Saved WORKER_API_KEY to .env.local");
+    });
+  }
+  if (!url) {
+    appendFile(".env.local", `\nVITE_CONVEX_URL=${convexUrl}\n`, (err) => {
+      if (err) throw err;
+      console.log("Saved VITE_CONVEX_URL to .env.local");
+    });
+  }
   if (!apiKey || !convexUrl) {
     throw new Error(
       "Missing environment variables WORKER_API_KEY or CONVEX_URL"
@@ -125,7 +155,9 @@ async function main() {
     console.debug("Attempting work...");
     let work = await client.mutation(api.workers.giveMeWork, { apiKey });
     while (work) {
+      const start = Date.now();
       work = await doWork(work, client, apiKey);
+      console.log("Finished:", Date.now() - start, "ms");
     }
   }
 }
