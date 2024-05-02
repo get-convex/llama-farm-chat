@@ -84,7 +84,12 @@ export const giveMeWork = workerMutation({
   handler: claimWork,
 });
 
+async function bumpWorkerLastSeen(ctx: WorkerCtx) {
+  await ctx.db.patch(ctx.worker._id, { lastSeen: Date.now() });
+}
+
 async function claimWork(ctx: WorkerCtx) {
+  await bumpWorkerLastSeen(ctx);
   const job = await ctx.db
     .query("jobs")
     .withIndex("status", (q) => q.eq("status", "pending"))
@@ -152,7 +157,7 @@ export const markAsDead = internalMutation({
     // TODO: could add a retry, but by now the user probably moved on.
     await ctx.db.patch(job._id, {
       lastUpdate: Date.now(),
-      status: "failed",
+      status: "timedOut",
     });
   },
 });
@@ -160,6 +165,7 @@ export const markAsDead = internalMutation({
 export const imStillWorking = workerMutation({
   args: { jobId: v.id("jobs") },
   handler: async (ctx, args) => {
+    await bumpWorkerLastSeen(ctx);
     const job = await validateJob(ctx, args.jobId, ctx.worker);
     // cancel and re-schedule the janitor
     const janitorId = await scheduleJanitor(ctx, job);
@@ -192,6 +198,7 @@ export const submitWork = workerMutation({
     state: literals("streaming", "success", "failed"),
   },
   handler: async (ctx, args) => {
+    await bumpWorkerLastSeen(ctx);
     const job = await validateJob(ctx, args.jobId, ctx.worker);
     const message = await validateResponseMessage(ctx, job.work.responseId);
     switch (args.state) {
@@ -231,6 +238,7 @@ export const signMeUp = internalMutation({
     await ctx.db.insert("workers", {
       name: args.name,
       apiKey,
+      lastSeen: Date.now(),
     });
     return apiKey;
   },
@@ -247,7 +255,7 @@ export const refreshMyKey = internalMutation({
     if (!worker) {
       throw new Error("Invalid API key");
     }
-    await ctx.db.patch(worker._id, { apiKey: uuid });
+    await ctx.db.patch(worker._id, { apiKey: uuid, lastSeen: Date.now() });
     return uuid;
   },
 });

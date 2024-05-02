@@ -54,15 +54,24 @@ export default defineSchema(
         responseId: v.id("messages"),
         stream: v.boolean(),
       }),
-      status: literals("pending", "inProgress", "success", "failed"),
+      status: literals(
+        "pending",
+        "inProgress",
+        "success",
+        "failed",
+        "timedOut"
+      ),
       lastUpdate: v.number(),
       workerId: v.optional(v.id("workers")),
       janitorId: v.optional(v.id("_scheduled_functions")),
       retries: v.number(),
-    }).index("status", ["status", "lastUpdate"]),
+    })
+      .index("responseId", ["work.responseId"])
+      .index("status", ["status", "lastUpdate"]),
     workers: defineTable({
       apiKey: v.string(),
       name: v.optional(v.string()),
+      lastSeen: v.number(),
     }).index("apiKey", ["apiKey"]),
     failures: defineTable({
       workerId: v.id("workers"),
