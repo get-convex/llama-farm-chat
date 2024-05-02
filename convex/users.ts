@@ -4,6 +4,7 @@ import {
   customMutation,
   customQuery,
 } from "convex-helpers/server/customFunctions";
+import { Emojis } from "@shared/config";
 
 export const userQuery = customQuery(query, {
   args: {
@@ -17,11 +18,6 @@ export const userQuery = customQuery(query, {
     return { ctx: { userId: session?.userId }, args: {} };
   },
 });
-
-const Emojis =
-  "😀 😃 😄 😁 😆 😅 😂 🤣 🥲 🥹 😊 😇 🙂 🙃 😉 😌 😍 🥰 😘 😗 😙 😚 😋 😛 😝 😜 🤪 😎 🥸 🤩 🥳 😏 😳 🤔 🫢 🤭 🤫 😶 🫠 😮 🤤 😵‍💫 🥴 🤑 🤠".split(
-    " "
-  );
 
 export const userMutation = customMutation(mutation, {
   args: {

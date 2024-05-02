@@ -48,7 +48,9 @@ export default defineSchema(
         })
       ),
       state: literals("success", "generating", "failed"),
-    }).index("threadId", ["threadId"]),
+    })
+      .index("state", ["state", "author.userId"])
+      .index("threadId", ["threadId"]),
     jobs: defineTable({
       work: v.object({
         responseId: v.id("messages"),

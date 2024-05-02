@@ -24,7 +24,6 @@ export const listThreads = userQuery({
         if (!description) {
           description = (
             await messagesQuery(ctx, m.threadId)
-              .order("desc")
               .filter((q) => q.neq(q.field("author.role"), "system"))
               .filter((q) => q.eq(q.field("state"), "success"))
               .first()
@@ -144,6 +143,18 @@ export const getThreadMessages = userQuery({
   },
 });
 
+async function getPendingMessage(
+  ctx: { db: DatabaseReader },
+  userId: Id<"users">
+) {
+  return ctx.db
+    .query("messages")
+    .withIndex("state", (q) =>
+      q.eq("state", "generating").eq("author.userId", userId)
+    )
+    .first();
+}
+
 export const sendMessage = userMutation({
   args: {
     message: v.string(),
@@ -159,7 +170,7 @@ export const sendMessage = userMutation({
       author: { role: "user", userId: ctx.userId },
       state: "success",
     });
-    if (args.skipAI) return;
+    if (args.skipAI || (await getPendingMessage(ctx, ctx.userId))) return;
     const systemContext = await messagesQuery(ctx, threadId)
       .filter((q) => q.eq(q.field("author.role"), "system"))
       .order("desc")

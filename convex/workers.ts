@@ -227,7 +227,7 @@ export const submitWork = workerMutation({
         break;
     }
     await ctx.db.replace(message._id, message);
-    return claimWork(ctx);
+    return args.state === "streaming" ? null : claimWork(ctx);
   },
 });
 
