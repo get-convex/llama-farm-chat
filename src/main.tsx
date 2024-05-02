@@ -1,7 +1,7 @@
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App, { Chat } from "./App";
+import App, { Chat, EmptyPage } from "./App";
 import "./index.css";
 import { SessionProvider } from "convex-helpers/react/sessions";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
@@ -16,6 +16,10 @@ const router = createBrowserRouter([
       {
         path: "/:uuid",
         element: <Chat />,
+      },
+      {
+        path: "/",
+        element: <EmptyPage />,
       },
     ],
   },
