@@ -18,3 +18,8 @@ export const completionModels = [
   "mistral",
 ] as const;
 export type CompletionModels = (typeof completionModels)[number];
+
+export const Emojis =
+  "😀 😃 😄 😁 😆 😅 😂 🤣 🥲 🥹 😊 😇 🙂 🙃 😉 😌 😍 🥰 😘 😗 😙 😚 😋 😛 😝 😜 🤪 😎 🥸 🤩 🥳 😏 😳 🤔 🫢 🤭 🤫 😶 🫠 😮 🤤 😵‍💫 🥴 🤑 🤠".split(
+    " "
+  );
