@@ -49,7 +49,8 @@ https://ollama.com/
 
 Later we'll show you how to run the frontend in the cloud, but to iterate it's
 easier to work on the UI locally. [Convex](https://convex.dev) will run in the
-cloud by default unless you run the [open source backend locally](https://stack.convex.dev/developing-with-the-oss-backend).
+cloud by default. Read below for details on
+[running everything locally](#running-everything-locally).
 
 ```sh
 npm i
@@ -116,6 +117,24 @@ function useAuthArgs<T>(args: T | "skip") {
 ```
 
 ## Etc
+
+### Running everything locally
+
+You can run the [open source backend locally](https://stack.convex.dev/developing-with-the-oss-backend).
+
+I've simplified the setup to download and run the binary with:
+
+```sh
+# You need to have just installed: https://github.com/casey/just
+just run-local-backend
+```
+
+This will override the url that the frontend uses to talk to the backend in .env.local
+and sync your code to the local backend.
+
+You can then change your package.json scripts from `convex dev ...` to `just convex dev ...` and
+the normal commands `npm run dev` will work. To run other Convex commands, swap `npx` for `just`:
+e.g. `just convex run ...` instead of `npx convex run ...`.
 
 ### Revoking API keys
 
