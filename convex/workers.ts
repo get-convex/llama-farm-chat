@@ -8,7 +8,10 @@ import {
   mutation,
   query,
 } from "./_generated/server";
-import { customMutation } from "convex-helpers/server/customFunctions";
+import {
+  CustomCtx,
+  customMutation,
+} from "convex-helpers/server/customFunctions";
 import { asyncMap, pruneNull } from "convex-helpers";
 import { Scheduler } from "convex/server";
 import { MaxJobRetries, WorkerDeadTimeout } from "../shared/config";
@@ -57,6 +60,7 @@ const workerMutation = customMutation(mutation, {
     return { ctx: { worker }, args: {} };
   },
 });
+type WorkerCtx = CustomCtx<typeof workerMutation>;
 
 async function validateResponseMessage(
   ctx: { db: DatabaseReader },
@@ -77,35 +81,37 @@ async function validateResponseMessage(
 
 export const giveMeWork = workerMutation({
   args: {},
-  handler: async (ctx) => {
-    const job = await ctx.db
-      .query("jobs")
-      .withIndex("status", (q) => q.eq("status", "pending"))
-      .first();
-    if (!job) {
-      return null;
-    }
-
-    const janitorId = await scheduleJanitor(ctx, job);
-    await ctx.db.patch(job._id, {
-      lastUpdate: Date.now(),
-      status: "inProgress",
-      workerId: ctx.worker._id,
-      janitorId,
-    });
-    const message = await validateResponseMessage(ctx, job.work.responseId);
-    return {
-      jobId: job._id,
-      stream: job.work.stream,
-      model: message.author.model,
-      messages: pruneNull(
-        await asyncMap(message.author.context, (msg) =>
-          ctx.db.get(msg).then(simpleMessage)
-        )
-      ),
-    };
-  },
+  handler: claimWork,
 });
+
+async function claimWork(ctx: WorkerCtx) {
+  const job = await ctx.db
+    .query("jobs")
+    .withIndex("status", (q) => q.eq("status", "pending"))
+    .first();
+  if (!job) {
+    return null;
+  }
+
+  const janitorId = await scheduleJanitor(ctx, job);
+  await ctx.db.patch(job._id, {
+    lastUpdate: Date.now(),
+    status: "inProgress",
+    workerId: ctx.worker._id,
+    janitorId,
+  });
+  const message = await validateResponseMessage(ctx, job.work.responseId);
+  return {
+    jobId: job._id,
+    stream: job.work.stream,
+    model: message.author.model,
+    messages: pruneNull(
+      await asyncMap(message.author.context, (msg) =>
+        ctx.db.get(msg).then(simpleMessage)
+      )
+    ),
+  };
+}
 
 function simpleMessage(message: Doc<"messages"> | null) {
   return (
@@ -214,6 +220,7 @@ export const submitWork = workerMutation({
         break;
     }
     await ctx.db.replace(message._id, message);
+    return claimWork(ctx);
   },
 });
 

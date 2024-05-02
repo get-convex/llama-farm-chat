@@ -1,17 +1,8 @@
-import { api } from "convex/_generated/api";
+import { api } from "../convex/_generated/api";
 import { ConvexClient } from "convex/browser";
-import { WorkerHeartbeatInterval } from "shared/config";
-import { chatCompletion, LLM_CONFIG } from "shared/llm";
-
-// You can add / remove whatever models you want to use here.
-export const completionModels = [
-  "llama3",
-  "codegemma",
-  "codellama:7b",
-  "llama2",
-  "mistral",
-] as const;
-export type CompletionModels = (typeof completionModels)[number];
+import { FunctionReturnType } from "convex/server";
+import { WorkerHeartbeatInterval, completionModels } from "../shared/config";
+import { chatCompletion, LLM_CONFIG } from "../shared/llm";
 
 function waitForWork(client: ConvexClient) {
   return new Promise<void>((resolve, reject) => {
@@ -29,12 +20,23 @@ function waitForWork(client: ConvexClient) {
   });
 }
 
-async function doWork(client: ConvexClient, apiKey: string) {
-  const work = await client.mutation(api.workers.giveMeWork, { apiKey });
+async function doWork(
+  work: FunctionReturnType<typeof api.workers.giveMeWork>,
+  client: ConvexClient,
+  apiKey: string
+) {
   if (!work) {
-    return;
+    return null;
   }
   const model = work.model ?? LLM_CONFIG.chatModel;
+  if (!completionModels.find((m) => m === model)) {
+    await client.mutation(api.workers.submitWork, {
+      message: `Invalid model: ${model}`,
+      state: "failed",
+      apiKey,
+      jobId: work.jobId,
+    });
+  }
   console.debug(work);
   const { messages, jobId } = work;
   const timerId = setInterval(() => {
@@ -65,7 +67,7 @@ async function doWork(client: ConvexClient, apiKey: string) {
           response = "";
         }
       }
-      await client.mutation(api.workers.submitWork, {
+      return client.mutation(api.workers.submitWork, {
         message: response,
         state: "success",
         apiKey,
@@ -77,7 +79,7 @@ async function doWork(client: ConvexClient, apiKey: string) {
         model,
         messages,
       });
-      await client.mutation(api.workers.submitWork, {
+      return client.mutation(api.workers.submitWork, {
         message: content,
         state: "success",
         apiKey,
@@ -85,7 +87,7 @@ async function doWork(client: ConvexClient, apiKey: string) {
       });
     }
   } catch (e) {
-    await client.mutation(api.workers.submitWork, {
+    return client.mutation(api.workers.submitWork, {
       message: e instanceof Error ? e.message : String(e),
       state: "failed",
       apiKey,
@@ -121,7 +123,10 @@ async function main() {
     console.debug("Waiting for work...");
     await waitForWork(client);
     console.debug("Attempting work...");
-    await doWork(client, apiKey);
+    let work = await client.mutation(api.workers.giveMeWork, { apiKey });
+    while (work) {
+      work = await doWork(work, client, apiKey);
+    }
   }
 }
 main().then(console.log).catch(console.error);
