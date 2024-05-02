@@ -1,10 +1,12 @@
 import inquirer from "inquirer";
+import dotenv from "dotenv";
 import { ConvexClient } from "convex/browser";
 import { FunctionReturnType } from "convex/server";
 import { api } from "../convex/_generated/api";
 import { WorkerHeartbeatInterval, completionModels } from "../shared/config";
 import { chatCompletion, LLM_CONFIG } from "../shared/llm";
 import { appendFile } from "fs";
+dotenv.config({ path: ".env.local" });
 
 function waitForWork(client: ConvexClient) {
   return new Promise<void>((resolve, reject) => {
