@@ -1,10 +1,16 @@
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App, { Chat, EmptyPage } from "./App";
+import App from "./App";
+import { EmptyPage } from "./EmptyPage";
+import { Chat } from "./Chat";
 import "./index.css";
 import { SessionProvider } from "convex-helpers/react/sessions";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
+
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+dayjs.extend(relativeTime);
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
