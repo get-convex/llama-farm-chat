@@ -86,7 +86,7 @@ function Messages() {
                   </span>
                 )}
                 <div
-                  className={cn("flex flex-col", {
+                  className={cn("flex flex-col max-w-[80%]", {
                     "items-end": message.userId === me?._id,
                   })}
                 >
@@ -95,7 +95,7 @@ function Messages() {
                       message.role === "assistant"
                         ? "bg-my-neutral-sprout dark:bg-my-light-green dark:text-my-light-tusk"
                         : "bg-my-white-baja dark:bg-my-neutral-sprout/80 dark:text-my-dark-green",
-                      "p-3 rounded-md max-w-[80%]"
+                      "p-3 rounded-md"
                     )}
                   >
                     <p className="text-sm whitespace-break-spaces">
