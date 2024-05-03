@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@convex/_generated/api";
 import { Emojis } from "@shared/config";
 import {
@@ -10,7 +9,7 @@ import {
 } from "convex-helpers/react/sessions";
 import { usePaginatedQuery } from "convex/react";
 import dayjs from "dayjs";
-import React, { MouseEvent, useCallback, useEffect, useState } from "react";
+import React, { MouseEvent, useCallback, useState } from "react";
 import { useParams } from "react-router-dom";
 import { cn } from "./lib/utils";
 
