@@ -80,7 +80,7 @@ Note: you don't have to run this on every machine
 
 3. From the root of this repo, run:
    ```sh
-   bun worker/client.ts
+   npm run worker
    ```
    This subscribes to the work queue and runs commands against Ollama.
 
@@ -99,26 +99,9 @@ to production. At a high level there's a few steps:
    npx convex run --prod workers:signMeUp '{ "name": "laptop A" }'
    ```
 
-### 5. Adding Clerk auth
+   Or copy them from dev with `npx convex export` and `npx convex import --prod`.
 
-For this demo, I am just using client-issued session IDs for auth, for convenience.
-To use an auth provider like [Clerk](https://clerk.com/), go through
-[these docs](https://docs.convex.dev/auth/clerk).
-
-You'll want to change the `userQuery` and `userMutation` implementations to fetch
-the user from `ctx.auth` instead of the `sessionId` argument,
-and change the `useAuthArgs` hook to not pass up a `sessionId`, instead:
-
-```ts
-function useAuthArgs<T>(args: T | "skip") {
-  const { isAuthenticated } = useConvexAuth();
-  return isAuthenticated ? args : "skip";
-}
-```
-
-## Etc
-
-### Running everything locally
+### Running everything locally (including the Convex backend)
 
 You can run the [open source backend locally](https://stack.convex.dev/developing-with-the-oss-backend).
 
