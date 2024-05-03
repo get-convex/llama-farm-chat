@@ -40,7 +40,9 @@ export function Threads() {
                     (t) => t.uuid !== thread.uuid
                   )?.uuid;
                   leaveThread({ uuid: thread.uuid })
-                    .then(() => navigate(`/${next}` || "", { replace: true }))
+                    .then(() =>
+                      navigate(next ? `/${next}` : "", { replace: true })
+                    )
                     .catch(console.error);
                 }}
               >

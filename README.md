@@ -18,6 +18,14 @@ local machines that are **not** exposed to public internet traffic.
 
 ## How it works
 
+     🧑‍💻💬👩‍💻💬👨‍💻💬  Users
+        \ | /
+         🌐  Convex w/ DB: messages, users, workers, jobs, api keys, etc.
+         / \
+        |  |  Websocket to pull jobs
+       💻 💻 ...  Convex client on a laptop / fly.io / etc.
+       🦙 🦙 ...  Ollama running llama3
+
 - There's a hosted website with a ChatGPT-like UI.
 - The website subscribes to a Convex backend for application data.
 - When a user makes a request to Convex that requires an LLM, a job is put in a work queue.
@@ -90,7 +98,9 @@ Follow [these docs](https://docs.convex.dev/production) to deploy your webapp
 to production. At a high level there's a few steps:
 
 1. `npx convex deploy`
-2. Deploying your web app to Netlify / Vercel / Amplify / etc.
+2. Deploying your web app to
+   [Netlify](https://docs.convex.dev/production/hosting/netlify) /
+   [Vercel](https://docs.convex.dev/production/hosting/vercel) / Amplify / etc.
 3. (Optional) connect a custom domain.
 4. Re-issue API keys for the production deployment:
 
