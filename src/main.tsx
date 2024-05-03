@@ -14,22 +14,25 @@ dayjs.extend(relativeTime);
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
-const router = createBrowserRouter([
-  {
-    path: "/",
-    element: <App />,
-    children: [
-      {
-        path: "/:uuid",
-        element: <Chat />,
-      },
-      {
-        path: "/",
-        element: <EmptyPage />,
-      },
-    ],
-  },
-]);
+const router = createBrowserRouter(
+  [
+    {
+      path: "/",
+      element: <App />,
+      children: [
+        {
+          path: "/:uuid",
+          element: <Chat />,
+        },
+        {
+          path: "/",
+          element: <EmptyPage />,
+        },
+      ],
+    },
+  ],
+  { basename: "/llama-farm" }
+);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
