@@ -268,91 +268,77 @@ function Messages() {
     useSessionIdArg(uuid ? { uuid } : "skip"),
     { initialNumItems: 10 }
   );
-  const scrollViewRef = React.useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    console.log(
-      "scrolling",
-      messages?.length,
-      scrollViewRef.current?.scrollHeight
-    );
-    scrollViewRef.current?.scrollTo({
-      top: scrollViewRef?.current?.scrollHeight || 0,
-      behavior: "smooth",
-    });
-  }, [messages]);
 
   return (
     <>
-      <ScrollArea className="flex-1" ref={scrollViewRef}>
-        <div className="flex flex-col-reverse px-2 mt-4 space-y-4">
-          {messages &&
-            messages.map((message) =>
-              message.role === "system" ? null : (
+      <div className="relative overflow-x-hidden overflow-y-auto flex-1 flex flex-col-reverse items-end px-2 space-y-4">
+        {messages &&
+          messages.map((message) =>
+            message.role === "system" ? null : (
+              <div
+                key={message.id}
+                className={cn("flex  gap-3 w-full", {
+                  "flex-row-reverse": message.userId === me?._id,
+                })}
+              >
+                {message.role === "assistant" ? (
+                  <span className="my-auto py-1.5 rounded-full  bg-my-light-green p-2 text-2xl">
+                    🦙
+                  </span>
+                ) : (
+                  <span
+                    title={message.name}
+                    className="my-auto py-1.5 text-3xl"
+                  >
+                    {message.name}
+                  </span>
+                )}
                 <div
-                  key={message.id}
-                  className={cn("flex  gap-3", {
-                    "flex-row-reverse": message.userId === me?._id,
+                  className={cn("flex flex-col", {
+                    "items-end": message.userId === me?._id,
                   })}
                 >
-                  {message.role === "assistant" ? (
-                    <span className="my-auto py-1.5 rounded-full  bg-my-light-green p-2 text-2xl">
-                      🦙
-                    </span>
-                  ) : (
-                    <span
-                      title={message.name}
-                      className="my-auto py-1.5 text-3xl"
-                    >
-                      {message.name}
-                    </span>
-                  )}
                   <div
-                    className={cn("flex flex-col", {
-                      "items-end": message.userId === me?._id,
+                    className={cn(
+                      message.role === "assistant"
+                        ? "bg-my-neutral-sprout dark:bg-my-light-green dark:text-my-light-tusk"
+                        : "bg-my-white-baja dark:bg-my-neutral-sprout/80 dark:text-my-dark-green",
+                      "p-3 rounded-md max-w-[80%]"
+                    )}
+                  >
+                    <p className="text-sm whitespace-break-spaces">
+                      {message.message ||
+                        (message.state === "pending"
+                          ? "waiting for a 🦙..."
+                          : message.state !== "inProgress"
+                            ? "⚠️"
+                            : "...")}
+                    </p>
+                  </div>
+                  <div
+                    className={cn("flex px-1", {
+                      "flex-row-reverse": message.userId === me?._id,
                     })}
                   >
-                    <div
-                      className={cn(
-                        message.role === "assistant"
-                          ? "bg-my-neutral-sprout dark:bg-my-light-green dark:text-my-light-tusk"
-                          : "bg-my-white-baja dark:bg-my-neutral-sprout/80 dark:text-my-dark-green",
-                        "p-3 rounded-md max-w-[80%]"
-                      )}
-                    >
-                      <p className="text-sm whitespace-break-spaces">
-                        {message.message ||
-                          (message.state === "pending"
-                            ? "waiting for a 🦙..."
-                            : message.state !== "inProgress"
-                              ? "⚠️"
-                              : "...")}
-                      </p>
-                    </div>
-                    <div
-                      className={cn("flex px-1", {
-                        "flex-row-reverse": message.userId === me?._id,
-                      })}
-                    >
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {dayjs(message.sentAt).fromNow()}
-                      </span>
-                    </div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {dayjs(message.sentAt).fromNow()}
+                    </span>
                   </div>
                 </div>
-              )
-            )}
-          {status === "CanLoadMore" && (
-            <Button
-              onClick={() => loadMore(10)}
-              variant="secondary"
-              size="sm"
-              className="w-full"
-            >
-              Load more
-            </Button>
+              </div>
+            )
           )}
-        </div>
-      </ScrollArea>
+        {status === "CanLoadMore" && (
+          <Button
+            onClick={() => loadMore(10)}
+            variant="secondary"
+            size="sm"
+            className="w-full"
+          >
+            Load more
+          </Button>
+        )}
+      </div>
     </>
   );
 }
