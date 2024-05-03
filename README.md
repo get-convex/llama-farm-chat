@@ -97,19 +97,23 @@ Note: you don't have to run this on every machine
 Follow [these docs](https://docs.convex.dev/production) to deploy your webapp
 to production. At a high level there's a few steps:
 
-1. `npx convex deploy`
-2. Deploying your web app to
+1. Deploying your web app to
    [Netlify](https://docs.convex.dev/production/hosting/netlify) /
    [Vercel](https://docs.convex.dev/production/hosting/vercel) / Amplify / etc.
-3. (Optional) connect a custom domain.
-4. Re-issue API keys for the production deployment:
+   and optionally connect a custom domain.
+2. As part of your build, it will do a `npx convex deploy` which pushes to prod.
+3. Re-issue API keys for the production deployment:
 
    ```sh
    # The JSON argument is optional but useful for tracking devices.
    npx convex run --prod workers:signMeUp '{ "name": "laptop A" }'
    ```
 
-   Or copy them from dev with `npx convex export` and `npx convex import --prod`.
+   Or copy all your data from dev with `npx convex export --path dev.zip` and `npx convex import dev.zip --prod`.
+   Make sure to update your workers to use the new convex URL & api key
+   It pulls them from env variables `VITE_CONVEX_URL`, `WORKER_API_KEY`, and saves them to .env.local
+   so if you're running your worker from the same repo you develop from, your worker will hit the dev backend
+   unless you run `VITE_CONVEX_URL=https://my-animal-123.convex.cloud npm run worker` or similar.
 
 ### Running everything locally (including the Convex backend)
 
