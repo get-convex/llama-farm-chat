@@ -9,9 +9,10 @@ import {
 } from "convex-helpers/react/sessions";
 import { usePaginatedQuery } from "convex/react";
 import dayjs from "dayjs";
-import React, { MouseEvent, useCallback, useState } from "react";
+import React, { MouseEvent, useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { cn } from "./lib/utils";
+import { useStickyChat } from "./useStickyChat";
 
 export function Chat() {
   const { uuid } = useParams();
@@ -60,12 +61,32 @@ function Messages() {
     useSessionIdArg(uuid ? { uuid } : "skip"),
     { initialNumItems: 10 }
   );
+  const [scrollContainer, setScrollContainer] = useState<HTMLDivElement>();
 
+  const handleScrollContainer = useCallback((node: HTMLDivElement) => {
+    setScrollContainer(node);
+  }, []);
+  const { hasNewMessages, scrollToBottom } = useStickyChat(scrollContainer, messages);
+  useEffect(() => {
+    scrollToBottom()
+  }, [scrollToBottom]);
+  
   return (
-    <>
-      <div className="relative overflow-x-hidden overflow-y-auto flex-1 flex flex-col-reverse items-end px-2 space-y-4">
+    <div className="relative flex overflow-hidden">
+      {hasNewMessages && <NewMessages onClick={scrollToBottom} />}
+    <div className="overflow-x-hidden overflow-y-auto flex-1 flex flex-col items-end px-2 space-y-4" ref={handleScrollContainer}>
+      {status === "CanLoadMore" && (
+          <Button
+            onClick={() => loadMore(10)}
+            variant="secondary"
+            size="sm"
+            className="w-full"
+          >
+            Load more
+          </Button>
+        )}
         {messages &&
-          messages.map((message) =>
+          messages.reverse().map((message) =>
             message.role === "system" ? null : (
               <div
                 key={message.id}
@@ -121,18 +142,8 @@ function Messages() {
               </div>
             )
           )}
-        {status === "CanLoadMore" && (
-          <Button
-            onClick={() => loadMore(10)}
-            variant="secondary"
-            size="sm"
-            className="w-full"
-          >
-            Load more
-          </Button>
-        )}
-      </div>
-    </>
+        </div>
+    </div>
   );
 }
 
@@ -208,5 +219,18 @@ function Send(props: React.ComponentPropsWithoutRef<"button">) {
         />
       </svg>
     </button>
+  );
+}
+
+function NewMessages({ onClick }: { onClick(): void }) {
+  return (
+    <Button
+      className="absolute bottom-0 right-10 z-10 motion-safe:animate-bounceIn"
+      size="sm"
+      type="button"
+      onClick={onClick}
+    >
+      New Messages
+    </Button>
   );
 }
