@@ -2,33 +2,33 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 dayjs.extend(relativeTime);
 
-import React, { MouseEvent, useCallback, useEffect, useState } from "react";
 import { usePaginatedQuery } from "convex/react";
+import React, { MouseEvent, useCallback, useEffect, useState } from "react";
 
-import { Cross2Icon, HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { api } from "@convex/_generated/api";
+import { Cross2Icon, HamburgerMenuIcon } from "@radix-ui/react-icons";
+import { Emojis } from "@shared/config";
 import {
   useSessionIdArg,
   useSessionMutation,
   useSessionQuery,
 } from "convex-helpers/react/sessions";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "./lib/utils";
-import {
-  useNavigate,
-  useLocation,
-  useParams,
   Link,
   Outlet,
+  useLocation,
+  useNavigate,
+  useParams,
 } from "react-router-dom";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "./components/ui/scroll-area";
-import { Emojis } from "@shared/config";
+import { cn } from "./lib/utils";
 
 export default function App() {
   const navigate = useNavigate();
