@@ -100,7 +100,7 @@ function Messages() {
                   >
                     <p className="text-sm whitespace-break-spaces">
                       {message.state === "failed"
-                        ? "☠️"
+                        ? "I have failed you ☠️"
                         : message.state === "timedOut"
                           ? "⌛️"
                           : message.state === "pending"
