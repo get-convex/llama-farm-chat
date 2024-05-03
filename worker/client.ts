@@ -6,7 +6,7 @@ import { api } from "../convex/_generated/api";
 import { WorkerHeartbeatInterval, completionModels } from "../shared/config";
 import { chatCompletion, LLM_CONFIG } from "../shared/llm";
 import { appendFile } from "fs";
-dotenv.config({ path: ".env.local" });
+dotenv.config({ path: [".env", ".env.local"] });
 
 function waitForWork(client: ConvexClient) {
   return new Promise<void>((resolve, reject) => {
@@ -134,15 +134,15 @@ async function main() {
   const { apiKey, convexUrl } = answers;
   console.log(apiKey, convexUrl);
   if (!key) {
-    appendFile(".env.local", `\nWORKER_API_KEY=${apiKey}\n`, (err) => {
+    appendFile(".env", `\nWORKER_API_KEY=${apiKey}\n`, (err) => {
       if (err) throw err;
-      console.log("Saved WORKER_API_KEY to .env.local");
+      console.log("Saved WORKER_API_KEY to .env");
     });
   }
   if (!url) {
-    appendFile(".env.local", `\nVITE_CONVEX_URL=${convexUrl}\n`, (err) => {
+    appendFile(".env", `\nVITE_CONVEX_URL=${convexUrl}\n`, (err) => {
       if (err) throw err;
-      console.log("Saved VITE_CONVEX_URL to .env.local");
+      console.log("Saved VITE_CONVEX_URL to .env");
     });
   }
   if (!apiKey || !convexUrl) {

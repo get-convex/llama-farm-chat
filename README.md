@@ -113,7 +113,7 @@ to production. At a high level there's a few steps:
    Make sure to update your workers to use the new convex URL & api key
    It pulls them from env variables `VITE_CONVEX_URL`, `WORKER_API_KEY`, and saves them to .env.local
    so if you're running your worker from the same repo you develop from, your worker will hit the dev backend
-   unless you run `VITE_CONVEX_URL=https://my-animal-123.convex.cloud npm run worker` or similar.
+   unless you edit `VITE_CONVEX_URL=https://my-animal-123.convex.cloud` in `.env`.
 
 ### Running everything locally (including the Convex backend)
 

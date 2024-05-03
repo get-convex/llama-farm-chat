@@ -210,20 +210,23 @@ export const submitWork = workerMutation({
         message.message += args.message;
         message.state = args.state;
         if (job.janitorId) await ctx.scheduler.cancel(job.janitorId);
-        await ctx.db.patch(job._id, {
-          lastUpdate: Date.now(),
-          // We retry on failure, so it will be tried again.
-          // It is at the end of the queue currently
-          status:
-            args.state === "success"
-              ? "success"
-              : job.retries < MaxJobRetries
-                ? "pending"
-                : "failed",
-          retries:
-            job.retries +
-            (args.state === "failed" && job.retries < MaxJobRetries ? 1 : 0),
-        });
+        if (args.state === "failed" && job.retries < MaxJobRetries ? 1 : 0) {
+          await ctx.db.patch(job._id, {
+            lastUpdate: Date.now(),
+            // We retry on failure, so it will be tried again.
+            // It is at the end of the queue currently
+            status: "pending",
+            retries: job.retries + 1,
+          });
+          message.message += `\n Retry ${job.retries + 1}/${MaxJobRetries}\n`;
+        } else {
+          await ctx.db.patch(job._id, {
+            lastUpdate: Date.now(),
+            // We retry on failure, so it will be tried again.
+            // It is at the end of the queue currently
+            status: args.state === "success" ? "success" : "failed",
+          });
+        }
         break;
     }
     await ctx.db.replace(message._id, message);

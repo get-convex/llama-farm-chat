@@ -99,12 +99,16 @@ function Messages() {
                     )}
                   >
                     <p className="text-sm whitespace-break-spaces">
-                      {message.message ||
-                        (message.state === "pending"
-                          ? "waiting for a 🦙..."
-                          : message.state !== "inProgress"
-                            ? "⚠️"
-                            : "...")}
+                      {message.state === "failed"
+                        ? "☠️"
+                        : message.state === "timedOut"
+                          ? "⌛️"
+                          : message.state === "pending"
+                            ? "waiting for a 🦙..."
+                            : message.state === "inProgress" ||
+                                message.state === "generating"
+                              ? "..."
+                              : message.message}
                     </p>
                   </div>
                   <div
