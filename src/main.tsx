@@ -31,7 +31,7 @@ const router = createBrowserRouter(
       ],
     },
   ],
-  { basename: "/llama-farm" }
+  { basename: import.meta.env.VITE_BASEPATH }
 );
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
