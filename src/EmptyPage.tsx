@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { useStartThread } from "./useStartThread";
-import { Link } from "react-router-dom";
 
 export function EmptyPage() {
   const [startThread, startingThread] = useStartThread();
@@ -44,16 +43,17 @@ export function EmptyPage() {
         Use the public farm, or run your own farm to have
         <br />a group chat with friends, augmented with 🦙s.
       </p>
-      <Link
-        to="https://github.com/get-convex/llama-farm-chat"
+      <a
+        href="https://github.com/get-convex/llama-farm-chat"
         className="flex items-center rounded bg-neutral-n2 text-neutral-n11 transition-colors hover:bg-neutral-white py-4"
+        target="_blank"
       >
         <div className="flex grow flex-col">
           <span className="mb-2 text-3xl leading-none">
             get-convex/<strong>llama-farm-chat</strong>
           </span>
         </div>
-      </Link>
+      </a>
     </div>
   );
 }

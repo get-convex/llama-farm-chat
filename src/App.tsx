@@ -9,7 +9,7 @@ import {
 import { api } from "@convex/_generated/api";
 import { Cross2Icon, HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { useSessionMutation } from "convex-helpers/react/sessions";
-import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Threads } from "./Threads";
 
 export default function App() {
@@ -49,10 +49,14 @@ export default function App() {
       </div>
       <footer className="container flex h-16 items-center ">
         <div className="p-2 bg-my-light-green w-full h-full flex justify-end gap-2">
-          <Link to="https://www.convex.dev/" className="no-underline">
+          <a
+            href="https://www.convex.dev/"
+            className="no-underline"
+            target="_blank"
+          >
             <span>Powered by</span>
             <ConvexLogo />
-          </Link>
+          </a>
         </div>
       </footer>
     </div>
