@@ -1,8 +1,10 @@
 #!/bin/bash
 
-./node_modules/.bin/tsx worker/client.ts &
-
 ollama serve &
+
+sleep 1
+
+./node_modules/.bin/tsx worker/client.ts &
 
 wait -n
 exit $?

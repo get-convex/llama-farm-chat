@@ -26,3 +26,4 @@ cpus = 16
 [[mounts]]
 source = "ollama"
 destination = "/root/.ollama"
+initial_size = "10gb"
