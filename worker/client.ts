@@ -67,6 +67,7 @@ async function doWork(
         response += part;
         // Some debouncing to avoid sending too many messages.
         if (hasDelimeter(response)) {
+          console.debug("part:", response);
           await client.mutation(api.workers.submitWork, {
             message: response,
             state: "streaming",
@@ -76,6 +77,8 @@ async function doWork(
           response = "";
         }
       }
+      if (response) console.debug("part:", response);
+      console.debug("Finished streaming");
       return client.mutation(api.workers.submitWork, {
         message: response,
         state: "success",
@@ -88,6 +91,7 @@ async function doWork(
         model,
         messages,
       });
+      console.debug("Response:", content);
       return client.mutation(api.workers.submitWork, {
         message: content,
         state: "success",
@@ -96,6 +100,7 @@ async function doWork(
       });
     }
   } catch (e) {
+    console.error(e);
     return client.mutation(api.workers.submitWork, {
       message: e instanceof Error ? e.message : String(e),
       state: "failed",
@@ -159,13 +164,13 @@ async function main() {
   console.log("Loading llama3...");
   await retryWithBackoff(async () => {
     try {
-      await pullOllama("llama3");
+      const resp = await pullOllama("llama3");
+      console.log(await resp.text());
     } catch (e) {
       console.error(e);
       throw { error: String(e), retry: true };
     }
   });
-  await pullOllama("llama3");
   console.log("Loaded ✅");
   for (;;) {
     console.debug("Waiting for work...");
