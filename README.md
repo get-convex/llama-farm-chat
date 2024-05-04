@@ -1,4 +1,4 @@
-# llama farmer
+# llama farm
 
 Local LLM workers backing a hosted AI Chat (with streaming)
 
