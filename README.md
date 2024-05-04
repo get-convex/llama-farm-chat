@@ -78,19 +78,12 @@ Note: you don't have to run this on every machine
    > "your-uuid"
    ```
 
-   Save the value in `.env.local`:
-
-   ```sh
-   WORKER_API_KEY="your-uuid"
-   ```
-
-2. Install [bun](https://bun.sh) if you don't already have it.
-
-3. From the root of this repo, run:
+2. From the root of this repo, run:
    ```sh
    npm run worker
    ```
-   This subscribes to the work queue and runs commands against Ollama.
+   It will prompt you for the API key you just generated and save it to `.env`.
+   It then subscribes to the work queue and runs commands against Ollama.
 
 ### 4. Host your webapp in the cloud
 
