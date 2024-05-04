@@ -108,6 +108,30 @@ to production. At a high level there's a few steps:
    so if you're running your worker from the same repo you develop from, your worker will hit the dev backend
    unless you edit `VITE_CONVEX_URL=https://my-animal-123.convex.cloud` in `.env`.
 
+### 5. (Optional) Run workers in the cloud
+
+You can run your workers on your local machine, but if you want to scale it up
+cloud servers at any point, you can run the Docker image.
+
+One-step launch with [fly.io](https://fly.io):
+
+```sh
+fly launch
+fly secrets set WORKER_API_KEY=your-api-key-uuid VITE_CONVEX_URL=https://your-animal-123.convex.cloud
+```
+
+Building it manually:
+
+```sh
+docker build -t llama-shepherd -f Dockerfile .
+```
+
+Run it:
+
+````sh
+docker run -it --rm -v /tmp/.ollama:/root/.ollama --name llama-shepherd -w /app llama-shepherd
+```
+
 ### Running everything locally (including the Convex backend)
 
 You can run the [open source backend locally](https://stack.convex.dev/developing-with-the-oss-backend).
