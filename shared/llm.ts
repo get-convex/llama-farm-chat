@@ -124,24 +124,29 @@ export async function chatCompletion(
 }
 
 export async function pullOllama(model: string) {
-  const pullResp = await fetch(apiUrl("/api/pull"), {
+  return fetch(apiUrl("/api/pull"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ name: model }),
   });
-  console.log("Pull response", await pullResp.text());
 }
 
 export async function tryPullOllama(model: string, error: string) {
   if (error.includes("try pulling")) {
     console.error("Model not found, pulling from Ollama");
-    await pullOllama(model);
-    throw {
-      retry: true,
-      error: `Dynamically pulled model. Original error: ${error}`,
-    };
+    const pullResp = await pullOllama(model);
+    if (!pullResp.ok) {
+      throw new Error(
+        `Failed to pull model: ${pullResp.status}: ${pullResp.statusText}`
+      );
+    } else {
+      throw {
+        retry: true,
+        error: `Dynamically pulled model. Trying again.`,
+      };
+    }
   }
 }
 
