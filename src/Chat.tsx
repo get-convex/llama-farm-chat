@@ -105,10 +105,7 @@ function Messages() {
                           ? "⌛️"
                           : message.state === "pending"
                             ? "waiting for a 🦙..."
-                            : message.state === "inProgress" ||
-                                message.state === "generating"
-                              ? "..."
-                              : message.message}
+                            : message.message || "..."}
                     </p>
                   </div>
                   <div
