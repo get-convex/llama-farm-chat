@@ -16,10 +16,6 @@ primary_region = 'ord'
 # min_machines_running = 0
 # processes = ['app']
 
-[processes]
-worker = 'node_modules/.bin/tsx worker/client.ts'
-ollama = '/bin/ollama serve'
-
 [[vm]]
 # size = "a100-40gb"
 memory = '64gb'

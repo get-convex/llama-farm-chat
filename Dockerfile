@@ -19,11 +19,12 @@ RUN node --version && npm --version
 
 # # Clean install of npm
 WORKDIR /app
-COPY package.json package-lock.json tsconfig.json /app/
+COPY shepherd.sh package.json package-lock.json tsconfig.json /app/
 RUN npm ci
 ADD convex ./convex
 ADD shared ./shared
 ADD worker ./worker
 
+CMD [ "./shepherd.sh"]
 ENTRYPOINT [ ]
 # ENTRY [ "npm", "run", "worker"]
