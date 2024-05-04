@@ -97,6 +97,15 @@ async function claimWork(ctx: WorkerCtx) {
   if (!job) {
     return null;
   }
+  if (job.workerId === ctx.worker._id) {
+    // 10% of the time we should try again
+    // Otherwise, don't retry a job we failed last time.
+    // 10% means if there's only one worker it won't sit in an infinite loop
+    // trying to fetch the same job.
+    if (Math.random() > 0.1) {
+      return null;
+    }
+  }
 
   const janitorId = await scheduleJanitor(ctx, job);
   await ctx.db.patch(job._id, {
