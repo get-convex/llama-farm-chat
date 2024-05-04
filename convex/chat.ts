@@ -63,7 +63,9 @@ export const startThread = userMutation({
     await ctx.db.insert("threadMembers", { threadId, userId: ctx.userId });
     if (args.systemPrompt) {
       await ctx.db.insert("messages", {
-        message: args.systemPrompt || "You are my friend with witty quips",
+        message:
+          args.systemPrompt ||
+          "You are my friend with witty quips. Please be concise. Usually a sentence or two.",
         threadId,
         author: { role: "system" },
         state: "success",
@@ -143,7 +145,7 @@ export const getThreadMessages = userQuery({
   },
 });
 
-async function getPendingMessage(
+async function anyPendingMessage(
   ctx: { db: DatabaseReader },
   userId: Id<"users">
 ) {
@@ -170,7 +172,7 @@ export const sendMessage = userMutation({
       author: { role: "user", userId: ctx.userId },
       state: "success",
     });
-    if (args.skipAI || (await getPendingMessage(ctx, ctx.userId))) return;
+    if (args.skipAI || (await anyPendingMessage(ctx, ctx.userId))) return;
     const systemContext = await messagesQuery(ctx, threadId)
       .filter((q) => q.eq(q.field("author.role"), "system"))
       .order("desc")

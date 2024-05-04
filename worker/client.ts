@@ -4,7 +4,7 @@ import { ConvexClient } from "convex/browser";
 import { FunctionReturnType } from "convex/server";
 import { api } from "../convex/_generated/api";
 import { WorkerHeartbeatInterval, completionModels } from "../shared/config";
-import { chatCompletion, LLM_CONFIG } from "../shared/llm";
+import { chatCompletion, LLM_CONFIG, pullOllama } from "../shared/llm";
 import { appendFile } from "fs";
 dotenv.config({ path: [".env", ".env.local"] });
 
@@ -151,6 +151,9 @@ async function main() {
     );
   }
   const client = new ConvexClient(convexUrl);
+  console.log("Loading llama3...");
+  await pullOllama("llama3");
+  console.log("Loaded ✅");
   for (;;) {
     console.debug("Waiting for work...");
     await waitForWork(client);
