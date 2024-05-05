@@ -27,7 +27,7 @@ export function Chat() {
   }, [updateName]);
 
   return (
-    <>
+    <div className="flex h-full flex-col justify-between">
       <div className="flex h-[4rem] items-center justify-between bg-my-light-green p-4 w-full">
         <h2 className="text-2xl">{thread?.names.join("+")}</h2>
         <Button
@@ -44,9 +44,9 @@ export function Chat() {
         <>
           <Messages />
           {thread ? <SendMessage /> : <JoinThread />}
-        </>
+          </>
       ) : null}
-    </>
+    </div>
   );
 }
 function Messages() {
@@ -62,7 +62,6 @@ function Messages() {
     { initialNumItems: 10 }
   );
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement>();
-
   const handleScrollContainer = useCallback((node: HTMLDivElement) => {
     setScrollContainer(node);
   }, []);
@@ -70,23 +69,14 @@ function Messages() {
   useEffect(() => {
     scrollToBottom()
   }, [scrollToBottom]);
+
   
   return (
-    <div className="relative flex overflow-hidden">
+    <div className="flex flex-1 min-h-0 relative">
       {hasNewMessages && <NewMessages onClick={scrollToBottom} />}
-    <div className="overflow-x-hidden overflow-y-auto flex-1 flex flex-col items-end px-2 space-y-4" ref={handleScrollContainer}>
-      {status === "CanLoadMore" && (
-          <Button
-            onClick={() => loadMore(10)}
-            variant="secondary"
-            size="sm"
-            className="w-full"
-          >
-            Load more
-          </Button>
-        )}
+      <div className="overflow-x-hidden overflow-y-auto flex-1 flex flex-col-reverse items-end px-2 space-y-4" ref={handleScrollContainer}>
         {messages &&
-          messages.reverse().map((message) =>
+          messages.map((message) =>
             message.role === "system" ? null : (
               <div
                 key={message.id}
@@ -116,7 +106,7 @@ function Messages() {
                       message.role === "assistant"
                         ? "bg-my-neutral-sprout dark:bg-my-light-green dark:text-my-light-tusk"
                         : "bg-my-white-baja dark:bg-my-neutral-sprout/80 dark:text-my-dark-green",
-                      "p-3 rounded-md"
+                      "p-3 rounded-md max-w-[40vw]"
                     )}
                   >
                     <p className="text-sm whitespace-break-spaces">
@@ -142,7 +132,17 @@ function Messages() {
               </div>
             )
           )}
-        </div>
+        {status === "CanLoadMore" && (
+          <Button
+            onClick={() => loadMore(10)}
+            variant="secondary"
+            size="sm"
+            className="w-full"
+          >
+            Load more
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -183,7 +183,7 @@ function SendMessage() {
   );
 
   return (
-    <form className="p-2 mt-4 flex items-center gap-2" onSubmit={sendSubmit}>
+    <form className="p-2 mt-4 flex items-center gap-2 w-full" onSubmit={sendSubmit}>
       <Input
         type="text"
         value={messageToSend}

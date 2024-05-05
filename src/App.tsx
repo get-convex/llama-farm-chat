@@ -43,7 +43,7 @@ export default function App() {
             <Threads />
           </div>
         </div>
-        <div className="flex-1 overflow-hidden bg-my-light-tusk dark:bg-my-dark-green flex flex-col border-my-dark-green md:border-l-0">
+        <div className="flex-1 h-full overflow-hidden bg-my-light-tusk dark:bg-my-dark-green flex flex-col border-my-dark-green md:border-l-0">
           <Outlet />
         </div>
       </div>

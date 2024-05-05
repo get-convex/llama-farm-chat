@@ -25,7 +25,7 @@ export function useStickyChat(
     messages
       ? scrollContainer &&
         (scrollTop === undefined ||
-          scrollTop >= scrollContainer.scrollHeight - scrollContainer.offsetHeight)
+          scrollTop === 0)
       : true;
 
   // Keep track of scroll position.
