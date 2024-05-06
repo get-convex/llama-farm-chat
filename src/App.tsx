@@ -47,8 +47,9 @@ export default function App() {
           <Outlet />
         </div>
       </div>
-      <footer className="container flex h-16 items-center ">
-        <div className="p-2 bg-my-light-green w-full h-full flex justify-end gap-2">
+      <footer className="container flex h-16 items-center overflow-y-hidden w-full">
+        <div className="p-2 bg-my-light-green w-full h-full flex justify-between gap-2">
+        <LlamaEmojiArt/>
           <a
             href="https://www.convex.dev/"
             className="no-underline"
@@ -139,4 +140,69 @@ function ConvexLogo() {
       </defs>
     </svg>
   );
+}
+
+function LlamaEmojiArt() {
+  return <div className="flex flex-shrink-1 flex-grow-0 flex-col min-w-0 overflow-hidden">
+    {...Array(5).fill(0).map(_n => <LlamaRow/>)}
+    </div>
+}
+
+export function LlamaRow() {
+  const [frame, setFrame] = useState(0);
+  const [spacings,] = useState<Array<{ length: number, offset: number }>>(generateLlamaSpacing(300))
+  useEffect(() => {
+    const advanceFrame = setInterval(() => {
+      setFrame(frame + 1)
+    }, 500)
+    return () => clearInterval(advanceFrame)
+  })
+  let llamaString = ""
+  for (const s of spacings) {
+    const { length, offset } = s;
+    llamaString += `${constructWalkingLlama(length, frame + offset)}`
+    if (length % 3 === 0) {
+      llamaString += "🌾"
+    } else if (length % 3 === 1) {
+      llamaString += "🚜"
+    } else {
+      llamaString += "🏠"
+    }
+  }
+  return <p className="whitespace-pre">{llamaString}</p>
+}
+
+// Llama walks between two points length spaces apart and pauses for 5
+// frames at each end
+function constructWalkingLlama(length: number, frame: number) {
+  const numSpaces = length;
+  const totalFrames = numSpaces * 2 + 10;
+  const modFrame = frame % totalFrames
+  let preSpace = 0;
+  if (modFrame <= 5) {
+    preSpace = numSpaces;
+  } else if (modFrame - 5 <= numSpaces) {
+    preSpace = numSpaces - (modFrame - 5)
+  } else if ((modFrame - 5) <= numSpaces + 5) {
+    preSpace = 0;
+  } else {
+    preSpace = (modFrame - 10) % numSpaces
+  }
+  const postSpace = Math.max(numSpaces - preSpace, 0)
+  let s = "";
+  s += " ".repeat(preSpace)
+  s += "🦙"
+  s += " ".repeat(postSpace)
+  return s
+}
+
+function generateLlamaSpacing(targetLength: number) {
+  const spacings = [];
+  let totalLength = 0;
+  while (totalLength < targetLength) {
+    const nextS = 10 + Math.floor(Math.random() * 20);
+    spacings.push({ length: nextS, offset: Math.floor(Math.random() * 40) })
+    totalLength += nextS
+  }
+  return spacings
 }
