@@ -70,6 +70,7 @@ function ThreadsMenuButton() {
   useEffect(() => {
     setShowMenu(false);
     if (showMenu) popoverRef.current?.click();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location]);
 
   return (
