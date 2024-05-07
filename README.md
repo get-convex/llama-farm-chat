@@ -53,7 +53,7 @@ local machines that are **not** exposed to public internet traffic.
 
 https://ollama.com/
 
-### 2. Run Convex & your webapp locally
+### 2. Run Convex & your webapp
 
 Later we'll show you how to run the frontend in the cloud, but to iterate it's
 easier to work on the UI locally. [Convex](https://convex.dev) will run in the
@@ -128,7 +128,7 @@ docker build -t llama-shepherd -f Dockerfile .
 
 Run it:
 
-````sh
+```sh
 docker run -it --rm -v /tmp/.ollama:/root/.ollama --name llama-shepherd -w /app llama-shepherd
 ```
 
