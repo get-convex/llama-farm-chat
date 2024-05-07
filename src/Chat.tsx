@@ -11,9 +11,10 @@ import {
 } from "convex-helpers/react/sessions";
 import { usePaginatedQuery } from "convex/react";
 import dayjs from "dayjs";
-import React, { MouseEvent, useCallback, useState } from "react";
+import React, { MouseEvent, useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { cn } from "./lib/utils";
+import { useStickyChat } from "./useStickyChat";
 
 export function Chat() {
   const { uuid } = useParams();
@@ -28,7 +29,7 @@ export function Chat() {
   }, [updateName]);
 
   return (
-    <>
+    <div className="flex h-full flex-col justify-between">
       <div className="flex h-[4rem] items-center justify-between bg-my-light-green p-4 w-full">
         <h2 className="text-2xl">{thread?.names.join("+")}</h2>
         <Button
@@ -45,9 +46,9 @@ export function Chat() {
         <>
           <Messages />
           {thread ? <SendMessage /> : <JoinThread />}
-        </>
+          </>
       ) : null}
-    </>
+    </div>
   );
 }
 function Messages() {
@@ -62,10 +63,20 @@ function Messages() {
     useSessionIdArg(uuid ? { uuid } : "skip"),
     { initialNumItems: 10 }
   );
+  const [scrollContainer, setScrollContainer] = useState<HTMLDivElement>();
+  const handleScrollContainer = useCallback((node: HTMLDivElement) => {
+    setScrollContainer(node);
+  }, []);
+  const { hasNewMessages, scrollToBottom } = useStickyChat(scrollContainer, messages);
+  useEffect(() => {
+    scrollToBottom()
+  }, [scrollToBottom]);
 
+  
   return (
-    <>
-      <div className="relative overflow-x-hidden overflow-y-auto flex-1 flex flex-col-reverse items-end px-2 space-y-4">
+    <div className="flex flex-1 min-h-0 relative">
+      {hasNewMessages && <NewMessages onClick={scrollToBottom} />}
+      <div className="overflow-x-hidden overflow-y-auto flex-1 flex flex-col-reverse items-end px-2 space-y-4" ref={handleScrollContainer}>
         {messages &&
           messages.map((message) =>
             message.role === "system" ? null : (
@@ -97,7 +108,7 @@ function Messages() {
                       message.role === "assistant"
                         ? "bg-my-neutral-sprout dark:bg-my-light-green dark:text-my-light-tusk"
                         : "bg-my-white-baja dark:bg-my-neutral-sprout/80 dark:text-my-dark-green",
-                      "p-3 rounded-md"
+                      "p-3 rounded-md max-w-[40vw]"
                     )}
                   >
                     <p className="text-sm whitespace-break-spaces">
@@ -138,7 +149,7 @@ function Messages() {
           </Button>
         )}
       </div>
-    </>
+    </div>
   );
 }
 
@@ -178,7 +189,7 @@ function SendMessage() {
   );
 
   return (
-    <form className="p-2 mt-4 flex items-center gap-2" onSubmit={sendSubmit}>
+    <form className="p-2 mt-4 flex items-center gap-2 w-full" onSubmit={sendSubmit}>
       <Input
         type="text"
         value={messageToSend}
@@ -214,5 +225,18 @@ function Send(props: React.ComponentPropsWithoutRef<"button">) {
         />
       </svg>
     </button>
+  );
+}
+
+function NewMessages({ onClick }: { onClick(): void }) {
+  return (
+    <Button
+      className="absolute bottom-0 right-10 z-10 motion-safe:animate-bounceIn"
+      size="sm"
+      type="button"
+      onClick={onClick}
+    >
+      New Messages
+    </Button>
   );
 }
