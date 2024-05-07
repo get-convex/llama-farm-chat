@@ -15,6 +15,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as chat from "../chat.js";
+import type * as migrations from "../migrations.js";
 import type * as users from "../users.js";
 import type * as workers from "../workers.js";
 
@@ -28,6 +29,7 @@ import type * as workers from "../workers.js";
  */
 declare const fullApi: ApiFromModules<{
   chat: typeof chat;
+  migrations: typeof migrations;
   users: typeof users;
   workers: typeof workers;
 }>;

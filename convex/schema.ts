@@ -66,7 +66,8 @@ export default defineSchema(
       lastUpdate: v.number(),
       workerId: v.optional(v.id("workers")),
       janitorId: v.optional(v.id("_scheduled_functions")),
-      retries: v.number(),
+      start: v.optional(v.number()),
+      end: v.optional(v.number()),
     })
       .index("responseId", ["work.responseId"])
       .index("status", ["status", "lastUpdate"]),
@@ -75,10 +76,6 @@ export default defineSchema(
       name: v.optional(v.string()),
       lastSeen: v.number(),
     }).index("apiKey", ["apiKey"]),
-    failures: defineTable({
-      workerId: v.id("workers"),
-      jobId: v.id("jobs"),
-    }),
   },
   // If you ever get an error about schema mismatch
   // between your data and your schema, and you cannot

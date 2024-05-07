@@ -30,7 +30,6 @@ export async function addJob(
       responseId: message._id,
       stream,
     },
-    retries: 0,
   });
 }
 
@@ -97,9 +96,15 @@ async function claimWork(ctx: WorkerCtx) {
   if (!job) {
     return null;
   }
-  if (job.workerId === ctx.worker._id) {
+  const attempts = await ctx.db
+    .query("jobs")
+    .withIndex("responseId", (q) =>
+      q.eq("work.responseId", job.work.responseId)
+    )
+    .collect();
+  if (attempts.find((j) => j.workerId === ctx.worker._id)) {
     // 10% of the time we should try again
-    // Otherwise, don't retry a job we failed last time.
+    // Otherwise, don't retry a job we previously attempted.
     // 10% means if there's only one worker it won't sit in an infinite loop
     // trying to fetch the same job.
     if (Math.random() > 0.1) {
@@ -112,6 +117,7 @@ async function claimWork(ctx: WorkerCtx) {
     lastUpdate: Date.now(),
     status: "inProgress",
     workerId: ctx.worker._id,
+    start: Date.now(),
     janitorId,
   });
   const message = await validateResponseMessage(ctx, job.work.responseId);
@@ -219,22 +225,24 @@ export const submitWork = workerMutation({
         message.message += args.message;
         message.state = args.state;
         if (job.janitorId) await ctx.scheduler.cancel(job.janitorId);
-        if (args.state === "failed" && job.retries < MaxJobRetries ? 1 : 0) {
-          await ctx.db.patch(job._id, {
-            lastUpdate: Date.now(),
-            // We retry on failure, so it will be tried again.
-            // It is at the end of the queue currently
-            status: "pending",
-            retries: job.retries + 1,
-          });
-          message.message += `\n Retry ${job.retries + 1}/${MaxJobRetries}\n`;
-        } else {
-          await ctx.db.patch(job._id, {
-            lastUpdate: Date.now(),
-            // We retry on failure, so it will be tried again.
-            // It is at the end of the queue currently
-            status: args.state === "success" ? "success" : "failed",
-          });
+        await ctx.db.patch(job._id, {
+          lastUpdate: Date.now(),
+          status: args.state,
+          end: Date.now(),
+        });
+        // See if we should retry
+        if (args.state === "failed") {
+          const attempts = (
+            await ctx.db
+              .query("jobs")
+              .withIndex("responseId", (q) =>
+                q.eq("work.responseId", message._id)
+              )
+              .collect()
+          ).length;
+          if (attempts <= MaxJobRetries) {
+            await addJob(ctx, message._id, job.work.stream);
+          }
         }
         break;
     }

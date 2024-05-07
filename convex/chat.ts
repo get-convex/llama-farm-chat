@@ -124,6 +124,7 @@ export const getThreadMessages = userQuery({
           job = await ctx.db
             .query("jobs")
             .withIndex("responseId", (q) => q.eq("work.responseId", msg._id))
+            .order("desc")
             .first();
           if (job) {
             sentAt = job.lastUpdate;
