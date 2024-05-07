@@ -2,6 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@convex/_generated/api";
 import { Emojis } from "@shared/config";
+import Markdown from "marked-react";
+import DOMPurify from "dompurify";
 import {
   useSessionIdArg,
   useSessionMutation,
@@ -105,7 +107,11 @@ function Messages() {
                           ? "⌛️"
                           : message.state === "pending"
                             ? "waiting for a 🦙..."
-                            : message.message || "..."}
+                            : (
+                                <Markdown>
+                                  {DOMPurify.sanitize(message.message)}
+                                </Markdown>
+                              ) || "..."}
                     </p>
                   </div>
                   <div
