@@ -58,7 +58,7 @@ https://ollama.com/
 Later we'll show you how to run the frontend in the cloud, but to iterate it's
 easier to work on the UI locally. [Convex](https://convex.dev) will run in the
 cloud by default. Read below for details on
-[running everything locally](#running-everything-locally).
+[running everything locally](#running-convex-locally).
 
 ```sh
 npm i
@@ -132,7 +132,7 @@ Run it:
 docker run -it --rm -v /tmp/.ollama:/root/.ollama --name llama-shepherd -w /app llama-shepherd
 ```
 
-### Running everything locally (including the Convex backend)
+### Running Convex locally
 
 You can run the [open source backend locally](https://stack.convex.dev/developing-with-the-oss-backend).
 
