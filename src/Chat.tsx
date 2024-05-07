@@ -46,7 +46,7 @@ export function Chat() {
         <>
           <Messages />
           {thread ? <SendMessage /> : <JoinThread />}
-          </>
+        </>
       ) : null}
     </div>
   );
@@ -67,16 +67,21 @@ function Messages() {
   const handleScrollContainer = useCallback((node: HTMLDivElement) => {
     setScrollContainer(node);
   }, []);
-  const { hasNewMessages, scrollToBottom } = useStickyChat(scrollContainer, messages);
+  const { hasNewMessages, scrollToBottom } = useStickyChat(
+    scrollContainer,
+    messages
+  );
   useEffect(() => {
-    scrollToBottom()
+    scrollToBottom();
   }, [scrollToBottom]);
 
-  
   return (
     <div className="flex flex-1 min-h-0 relative">
       {hasNewMessages && <NewMessages onClick={scrollToBottom} />}
-      <div className="overflow-x-hidden overflow-y-auto flex-1 flex flex-col-reverse items-end px-2 space-y-4" ref={handleScrollContainer}>
+      <div
+        className="overflow-x-hidden overflow-y-auto flex-1 flex flex-col-reverse items-end px-2 space-y-4"
+        ref={handleScrollContainer}
+      >
         {messages &&
           messages.map((message) =>
             message.role === "system" ? null : (
@@ -189,7 +194,10 @@ function SendMessage() {
   );
 
   return (
-    <form className="p-2 mt-4 flex items-center gap-2 w-full" onSubmit={sendSubmit}>
+    <form
+      className="p-2 mt-4 flex items-center gap-2 w-full"
+      onSubmit={sendSubmit}
+    >
       <Input
         type="text"
         value={messageToSend}

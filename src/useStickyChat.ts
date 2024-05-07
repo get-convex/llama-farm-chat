@@ -9,23 +9,25 @@ type UseStickyChat = {
 type Message = any;
 export function useStickyChat(
   scrollContainer?: HTMLDivElement,
-  messages?: Message[],
+  messages?: Message[]
 ): UseStickyChat {
   const [hasNewMessages, setHasNewMessages] = useState(false);
   const [scrollTop, setScrollTop] = useState<number>();
 
   const scrollToBottom = useCallback(() => {
     if (scrollContainer) {
-      scrollContainer.scrollTo(scrollContainer.scrollLeft, scrollContainer.scrollHeight);
+      scrollContainer.scroll({
+        behavior: "smooth",
+        left: scrollContainer.scrollLeft,
+        top: scrollContainer.scrollHeight,
+      });
     }
   }, [scrollContainer]);
 
   const isStuck =
     // Is the scroll element scrolled to the bottom?
     messages
-      ? scrollContainer &&
-        (scrollTop === undefined ||
-          scrollTop === 0)
+      ? scrollContainer && (scrollTop === undefined || scrollTop === 0)
       : true;
 
   // Keep track of scroll position.
@@ -33,7 +35,8 @@ export function useStickyChat(
     function updateScrollPosition() {
       setScrollTop(scrollContainer?.scrollTop);
     }
-    scrollContainer && scrollContainer.addEventListener("scroll", updateScrollPosition);
+    scrollContainer &&
+      scrollContainer.addEventListener("scroll", updateScrollPosition);
 
     return function cleanup() {
       scrollContainer?.removeEventListener("scroll", updateScrollPosition);
