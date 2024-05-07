@@ -150,59 +150,59 @@ function LlamaEmojiArt() {
 
 export function LlamaRow() {
   const [frame, setFrame] = useState(0);
-  const [spacings,] = useState<Array<{ length: number, offset: number }>>(generateLlamaSpacing(300))
+  const [positions,] = useState<{ llamas: Array<number>, grass: Array<number>}>(generatePositions(200))
   useEffect(() => {
     const advanceFrame = setInterval(() => {
       setFrame(frame + 1)
     }, 500)
     return () => clearInterval(advanceFrame)
   })
-  let llamaString = ""
-  for (const s of spacings) {
-    const { length, offset } = s;
-    llamaString += `${constructWalkingLlama(length, frame + offset)}`
-    if (length % 3 === 0) {
-      llamaString += "🌾"
-    } else if (length % 3 === 1) {
-      llamaString += "🚜"
-    } else {
-      llamaString += "🏠"
-    }
-  }
-  return <p className="whitespace-pre">{llamaString}</p>
+  const llamaString = constructLlamaString(200, frame, positions.llamas, positions.grass)
+  return <div className="flex flex-1 w-full">{
+    ...llamaString.map(char => {
+      return <p className="w-[10px] text-center">{char}</p>
+    })
+}</div>
 }
 
-// Llama walks between two points length spaces apart and pauses for 5
-// frames at each end
-function constructWalkingLlama(length: number, frame: number) {
-  const numSpaces = length;
-  const totalFrames = numSpaces * 2 + 10;
-  const modFrame = frame % totalFrames
-  let preSpace = 0;
-  if (modFrame <= 5) {
-    preSpace = numSpaces;
-  } else if (modFrame - 5 <= numSpaces) {
-    preSpace = numSpaces - (modFrame - 5)
-  } else if ((modFrame - 5) <= numSpaces + 5) {
-    preSpace = 0;
-  } else {
-    preSpace = (modFrame - 10) % numSpaces
+function constructLlamaString(totalLength: number, frame: number, initialLlamaPositions: number[], grassPositions: number[]) {
+  const shiftedLlamaPositions = initialLlamaPositions.map(p => postiveMod(p - frame, totalLength));
+  const activeGrassPositions = grassPositions.filter(p => {
+    const recentlyEaten = [p, p - 1, p - 2].some(x => shiftedLlamaPositions.includes(x))
+    return !recentlyEaten
+  })
+  const s = [];
+  for (let i = 0; i < totalLength; i += 1) {
+    if (activeGrassPositions.includes(i)) {
+      s.push("🌾")
+    } else if (shiftedLlamaPositions.includes(i)) {
+      s.push("🦙")
+    } else {
+      s.push("")
+    }
   }
-  const postSpace = Math.max(numSpaces - preSpace, 0)
-  let s = "";
-  s += " ".repeat(preSpace)
-  s += "🦙"
-  s += " ".repeat(postSpace)
   return s
 }
 
-function generateLlamaSpacing(targetLength: number) {
-  const spacings = [];
+function postiveMod(x: number, modulus: number) {
+  return ((x % modulus) + modulus) % modulus
+}
+
+function generatePositions(targetLength: number) {
+  const llamaPositions = [];
+  const grassPositions = []
   let totalLength = 0;
+  let isLlama = true;
   while (totalLength < targetLength) {
     const nextS = 10 + Math.floor(Math.random() * 20);
-    spacings.push({ length: nextS, offset: Math.floor(Math.random() * 40) })
     totalLength += nextS
+    if (isLlama) {
+      llamaPositions.push(totalLength)
+    } else {
+      grassPositions.push(totalLength)
+    }
+
+    isLlama = !isLlama
   }
-  return spacings
+  return { llamas: llamaPositions, grass: grassPositions }
 }
