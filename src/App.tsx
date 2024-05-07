@@ -47,8 +47,9 @@ export default function App() {
           <Outlet />
         </div>
       </div>
-      <footer className="container flex h-16 items-center ">
-        <div className="p-2 bg-my-light-green w-full h-full flex justify-end gap-2">
+      <footer className="container flex h-16 items-center overflow-y-hidden w-full">
+        <div className="p-2 bg-my-light-green w-full h-full flex justify-between gap-2">
+        <LlamaEmojiArt/>
           <a
             href="https://www.convex.dev/"
             className="no-underline"
@@ -140,4 +141,69 @@ function ConvexLogo() {
       </defs>
     </svg>
   );
+}
+
+function LlamaEmojiArt() {
+  return <div className="flex flex-shrink-1 flex-grow-0 flex-col min-w-0 overflow-hidden">
+    {...Array(5).fill(0).map(_n => <LlamaRow/>)}
+    </div>
+}
+
+export function LlamaRow() {
+  const [frame, setFrame] = useState(0);
+  const [positions,] = useState<{ llamas: Array<number>, grass: Array<number>}>(generatePositions(200))
+  useEffect(() => {
+    const advanceFrame = setInterval(() => {
+      setFrame(frame + 1)
+    }, 500)
+    return () => clearInterval(advanceFrame)
+  })
+  const llamaString = constructLlamaString(200, frame, positions.llamas, positions.grass)
+  return <div className="flex flex-1 w-full">{
+    ...llamaString.map(char => {
+      return <p className="w-[10px] text-center">{char}</p>
+    })
+}</div>
+}
+
+function constructLlamaString(totalLength: number, frame: number, initialLlamaPositions: number[], grassPositions: number[]) {
+  const shiftedLlamaPositions = initialLlamaPositions.map(p => postiveMod(p - frame, totalLength));
+  const activeGrassPositions = grassPositions.filter(p => {
+    const recentlyEaten = [p, p - 1, p - 2].some(x => shiftedLlamaPositions.includes(x))
+    return !recentlyEaten
+  })
+  const s = [];
+  for (let i = 0; i < totalLength; i += 1) {
+    if (activeGrassPositions.includes(i)) {
+      s.push("🌾")
+    } else if (shiftedLlamaPositions.includes(i)) {
+      s.push("🦙")
+    } else {
+      s.push("")
+    }
+  }
+  return s
+}
+
+function postiveMod(x: number, modulus: number) {
+  return ((x % modulus) + modulus) % modulus
+}
+
+function generatePositions(targetLength: number) {
+  const llamaPositions = [];
+  const grassPositions = []
+  let totalLength = 0;
+  let isLlama = true;
+  while (totalLength < targetLength) {
+    const nextS = 10 + Math.floor(Math.random() * 20);
+    totalLength += nextS
+    if (isLlama) {
+      llamaPositions.push(totalLength)
+    } else {
+      grassPositions.push(totalLength)
+    }
+
+    isLlama = !isLlama
+  }
+  return { llamas: llamaPositions, grass: grassPositions }
 }
