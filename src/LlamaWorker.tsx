@@ -9,20 +9,39 @@ import { ConvexClient } from "convex/browser";
 import { api } from "@convex/_generated/api";
 import { FunctionReturnType } from "convex/server";
 import { WorkerHeartbeatInterval } from "@shared/config";
-import { hasDelimeter } from "worker/client";
+
+function hasDelimeter(response: string) {
+  return (
+    response.includes("\n") ||
+    response.includes(".") ||
+    response.includes("?") ||
+    response.includes("!") ||
+    response.includes(",") ||
+    response.length > 100
+  );
+}
 
 type LoadingState = { progress: number; text: string };
 
-const MODEL = "TinyLlama-1.1B-Chat-v0.4-q4f32_1-1k";
-// "Llama-3-8B-Instruct-q4f16_1",
+const MODEL = "Llama-3-8B-Instruct-q4f16_1";
+
+type State =
+  | { type: "signingUp" }
+  | { type: "waitingForWork"; stats: string }
+  | { type: "loadingWork" }
+  | {
+      type: "working";
+      job: FunctionReturnType<typeof api.workers.giveMeWork>;
+    };
 
 class Llama {
   disposed = false;
 
   static async load(
     loadingCb: (loading: LoadingState) => void,
+    stateCb: (state: State) => void,
     client: ConvexClient,
-    apiKey: string
+    name: string
   ) {
     loadingCb({ progress: 0, text: "Starting..." });
     const url = new URL("./lib/llamaWebWorker.ts", import.meta.url);
@@ -31,7 +50,6 @@ class Llama {
     appConfig.useIndexedDBCache = true;
     const engine = await webllm.CreateWebWorkerEngine(worker, MODEL, {
       initProgressCallback: (progressReport) => {
-        console.log(progressReport);
         loadingCb({
           progress: progressReport.progress * 100,
           text: progressReport.text,
@@ -39,14 +57,15 @@ class Llama {
       },
       appConfig,
     });
-    return new Llama(worker, engine, client, apiKey);
+    return new Llama(worker, engine, client, name, stateCb);
   }
 
   constructor(
     private worker: Worker,
     public engine: webllm.EngineInterface,
     private client: ConvexClient,
-    private apiKey: string
+    private name: string,
+    private stateCb: (state: State) => void
   ) {}
 
   async dispose() {
@@ -56,7 +75,15 @@ class Llama {
   }
 
   async workLoop() {
+    this.stateCb({ type: "signingUp" });
+    const apiKey = await this.client.mutation(api.workers.signMeUp, {
+      name: this.name,
+    });
+    console.log("Signed up", apiKey);
     while (!this.disposed) {
+      const stats = await this.engine.runtimeStatsText();
+      this.stateCb({ type: "waitingForWork", stats });
+      console.log("Waiting for work...");
       let unsubscribe: undefined | (() => void);
       try {
         await new Promise<void>((resolve, reject) => {
@@ -76,28 +103,32 @@ class Llama {
           unsubscribe();
         }
       }
+      this.stateCb({ type: "loadingWork" });
       let work = await this.client.mutation(api.workers.giveMeWork, {
-        apiKey: this.apiKey,
+        apiKey,
       });
+      console.log("Starting", work);
       while (work && !this.disposed) {
         const start = Date.now();
-        work = await this.doWork(work);
+        work = await this.doWork(work, apiKey);
         console.log("Finished:", Date.now() - start, "ms");
       }
     }
   }
 
   async doWork(
-    work: FunctionReturnType<typeof api.workers.giveMeWork>
+    work: FunctionReturnType<typeof api.workers.giveMeWork>,
+    apiKey: string
   ): Promise<FunctionReturnType<typeof api.workers.giveMeWork>> {
     if (!work) {
       return null;
     }
+    this.stateCb({ type: "working", job: work });
     const { messages, jobId } = work;
     const timerId = setInterval(() => {
       console.debug("Still working...");
       this.client
-        .mutation(api.workers.imStillWorking, { apiKey: this.apiKey, jobId })
+        .mutation(api.workers.imStillWorking, { apiKey, jobId })
         .then(console.log)
         .catch(console.error);
     }, WorkerHeartbeatInterval);
@@ -119,18 +150,19 @@ class Llama {
             await this.client.mutation(api.workers.submitWork, {
               message: response,
               state: "streaming",
-              apiKey: this.apiKey,
+              apiKey,
               jobId,
             });
+            console.log(response);
             response = "";
           }
-          return this.client.mutation(api.workers.submitWork, {
-            message: response,
-            state: "streaming",
-            apiKey: this.apiKey,
-            jobId,
-          });
         }
+        return this.client.mutation(api.workers.submitWork, {
+          message: response,
+          state: "streaming",
+          apiKey,
+          jobId,
+        });
       } else {
         const completion = await this.engine.chat.completions.create({
           stream: false,
@@ -140,7 +172,7 @@ class Llama {
         return this.client.mutation(api.workers.submitWork, {
           message: message.content ?? "",
           state: "success",
-          apiKey: this.apiKey,
+          apiKey,
           jobId,
         });
       }
@@ -149,20 +181,20 @@ class Llama {
       return this.client.mutation(api.workers.submitWork, {
         message: e instanceof Error ? e.message : String(e),
         state: "failed",
-        apiKey: this.apiKey,
+        apiKey,
         jobId,
       });
     } finally {
       clearInterval(timerId);
     }
-    throw new Error("Unreachable");
   }
 }
 
 export function LlamaWorker() {
   const [loading, setLoading] = useState<LoadingState | null>(null);
   const [llama, setLlama] = useState<Llama>();
-  const [name, setName] = useState<string>();
+  const [name, setName] = useState<string>("");
+  const [state, setState] = useState<State>();
 
   useEffect(() => {
     () => {
@@ -170,49 +202,22 @@ export function LlamaWorker() {
     };
   }, [llama]);
   const startLoading = async () => {
+    console.log("Starting...");
     const client = new ConvexClient(import.meta.env.VITE_CONVEX_URL as string);
+    console.log(client);
     try {
-      const apiKey = await client.mutation(api.workers.signMeUp, {
-        name,
-      });
-      const llama = await Llama.load(setLoading, client, apiKey);
+      if (!name) {
+        throw new Error("Please enter a name");
+      }
+      const llama = await Llama.load(setLoading, setState, client, name);
       setLlama(llama);
+      void llama.workLoop();
     } catch (e: any) {
       console.error("Failed to load model", e);
     } finally {
       setLoading(null);
     }
   };
-
-  const [messageToSend, setMessageToSend] = useState("");
-  const sendSubmit = useCallback(
-    async (e: FormEvent<HTMLFormElement>) => {
-      e.preventDefault();
-      if (!llama || !messageToSend) {
-        return;
-      }
-      const message = messageToSend;
-      setMessageToSend("");
-
-      const completion = await llama.engine.chat.completions.create({
-        stream: true,
-        messages: [{ role: "user", content: message }],
-        temperature: 0.5,
-        max_gen_len: 1024,
-      });
-      let response = "";
-      for await (const chunk of completion) {
-        const curDelta = chunk.choices[0].delta.content;
-        if (curDelta) {
-          response += curDelta;
-        }
-      }
-      console.log(response);
-      const stats = await llama.engine.runtimeStatsText();
-      console.log(stats);
-    },
-    [messageToSend, llama]
-  );
 
   // TODO:
   // [ ] Use AI town's waitlist's animated progress bar!
@@ -225,13 +230,21 @@ export function LlamaWorker() {
         Join the llama farm and live your childhood dreams!
       </p>
       {!llama && !loading && (
-        <Button
-          variant={"default"}
-          disabled={!!loading}
-          onClick={() => void startLoading()}
-        >
-          Download model
-        </Button>
+        <>
+          <form
+            className="p-2 mt-4 flex items-center gap-2"
+            onSubmit={() => void startLoading()}
+          >
+            <Input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="flex-1 resize-none bg-my-neutral-sprout dark:placeholder-my-dark-green dark:text-my-light-tusk dark:bg-my-light-green"
+              placeholder="Worker name"
+            />
+            <Button type="submit">Start download</Button>
+          </form>
+        </>
       )}
       {!!loading && (
         <>
@@ -248,28 +261,7 @@ export function LlamaWorker() {
           <p className="text-small text-center p-4 max-w-lg">{loading.text}</p>
         </>
       )}
-      {llama && (
-        <form
-          className="p-2 mt-4 flex items-center gap-2"
-          onSubmit={(e) => void sendSubmit(e)}
-        >
-          <Input
-            type="text"
-            value={messageToSend}
-            onChange={(e) => setMessageToSend(e.target.value)}
-            className="flex-1 resize-none bg-my-neutral-sprout dark:placeholder-my-dark-green dark:text-my-light-tusk dark:bg-my-light-green"
-            placeholder="Type your message..."
-          />
-          <Send
-            type="submit"
-            className={
-              "my-light-green fill-my-light-green disabled:cursor-not-allowed"
-            }
-            title={"hi"}
-            disabled={false}
-          />
-        </form>
-      )}
+      {!!state && <pre>{JSON.stringify(state, null, 2)}</pre>}
     </div>
   );
 }
