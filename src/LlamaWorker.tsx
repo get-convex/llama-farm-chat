@@ -247,7 +247,7 @@ export function LlamaStatus() {
   const { state, llama, loading } = useContext(LlamaContext) ?? {};
   if (loading)
     return (
-      <div className="pl-4">
+      <div className="max-w-[calc(100%-150px)] pl-4">
         <div className="flex items-center">
           <LlamaProgressBar loading={loading} />
           {!llama?.disposed && (
@@ -289,7 +289,7 @@ export function LlamaStatus() {
       </div>
     );
   }
-  return null;
+  return <div />;
 }
 
 export const LlamaContext = createContext<{

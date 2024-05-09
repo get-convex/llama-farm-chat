@@ -48,11 +48,9 @@ export default function App() {
           <Outlet />
         </div>
       </div>
-      <footer className="container ">
+      <footer className="container">
         <div className=" flex h-16 items-center justify-between bg-my-light-green">
-          <div className="flex h-full items-center gap-2">
-            <LlamaStatus className="overflow-hidden" />
-          </div>
+          <LlamaStatus />
           <div className="h-full justify-end gap-2  p-2">
             <a
               href="https://www.convex.dev/"
