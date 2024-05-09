@@ -19,8 +19,9 @@ RUN node --version && npm --version
 
 # # Clean install of npm
 WORKDIR /app
-COPY shepherd.sh package.json package-lock.json tsconfig.json /app/
+COPY package.json package-lock.json tsconfig.json ./
 RUN npm ci
+COPY shepherd.sh .
 ADD convex ./convex
 ADD shared ./shared
 ADD worker ./worker
