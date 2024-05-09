@@ -7,6 +7,9 @@ app = 'llama-worker'
 primary_region = 'ord'
 vm.size = 'a100-40gb'
 
+[env]
+OLLAMA_NUM_PARALLEL = "4"
+
 [[mounts]]
 source = 'ollama'
 destination = '/root/.ollama'
