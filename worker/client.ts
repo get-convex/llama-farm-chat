@@ -24,7 +24,7 @@ function waitForWork(client: ConvexClient) {
           unsubscribe();
         }
       },
-      reject
+      reject,
     );
   });
 }
@@ -32,7 +32,7 @@ function waitForWork(client: ConvexClient) {
 async function doWork(
   work: FunctionReturnType<typeof api.workers.giveMeWork>,
   client: ConvexClient,
-  apiKey: string
+  apiKey: string,
 ) {
   if (!work) {
     return null;
@@ -56,49 +56,58 @@ async function doWork(
       .catch(console.error);
   }, WorkerHeartbeatInterval);
   try {
-    if (work.stream) {
-      const { content: stream } = await chatCompletion({
-        stream: true,
-        model,
-        messages,
-      });
-      let response = "";
-      for await (const part of stream.read()) {
-        response += part;
-        // Some debouncing to avoid sending too many messages.
-        if (hasDelimeter(response)) {
-          console.debug("part:", response);
-          await client.mutation(api.workers.submitWork, {
-            message: response,
-            state: "streaming",
-            apiKey,
-            jobId,
-          });
-          response = "";
+    const { retries, result } = await retryWithBackoff(async () => {
+      if (work.stream) {
+        const { content: stream } = await chatCompletion({
+          stream: true,
+          model,
+          messages,
+        });
+        let totalLength = 0;
+        let response = "";
+        for await (const part of stream.read()) {
+          response += part;
+          // Some debouncing to avoid sending too many messages.
+          if (hasDelimeter(response)) {
+            console.debug("part:", response);
+            totalLength += response.length;
+            await client.mutation(api.workers.submitWork, {
+              message: response,
+              state: "streaming",
+              apiKey,
+              jobId,
+            });
+            response = "";
+          }
         }
+        if (response) console.debug("part:", response);
+        if (!response && totalLength === 0)
+          throw { error: "No response", retry: true };
+        console.debug("Finished streaming");
+        return client.mutation(api.workers.submitWork, {
+          message: response,
+          state: "success",
+          apiKey,
+          jobId,
+        });
+      } else {
+        const { content } = await chatCompletion({
+          stream: false,
+          model,
+          messages,
+        });
+        console.debug("Response:", content);
+        if (!content) throw { error: "No response", retry: true };
+        return client.mutation(api.workers.submitWork, {
+          message: content,
+          state: "success",
+          apiKey,
+          jobId,
+        });
       }
-      if (response) console.debug("part:", response);
-      console.debug("Finished streaming");
-      return client.mutation(api.workers.submitWork, {
-        message: response,
-        state: "success",
-        apiKey,
-        jobId,
-      });
-    } else {
-      const { content } = await chatCompletion({
-        stream: false,
-        model,
-        messages,
-      });
-      console.debug("Response:", content);
-      return client.mutation(api.workers.submitWork, {
-        message: content,
-        state: "success",
-        apiKey,
-        jobId,
-      });
-    }
+    });
+    if (retries > 0) console.warn("Retried", retries, "times");
+    return result;
   } catch (e) {
     console.error(e);
     return client.mutation(api.workers.submitWork, {
@@ -139,7 +148,7 @@ async function main() {
         message: "Worker API key?",
       },
     ],
-    { apiKey: key, convexUrl: url }
+    { apiKey: key, convexUrl: url },
   );
   const { apiKey, convexUrl } = answers;
   console.log(apiKey, convexUrl);
@@ -157,7 +166,7 @@ async function main() {
   }
   if (!apiKey || !convexUrl) {
     throw new Error(
-      "Missing environment variables WORKER_API_KEY or CONVEX_URL"
+      "Missing environment variables WORKER_API_KEY or CONVEX_URL",
     );
   }
   const client = new ConvexClient(convexUrl);
