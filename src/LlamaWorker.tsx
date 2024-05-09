@@ -3,8 +3,6 @@ import { FormEvent, MouseEvent, useCallback, useEffect, useState } from "react";
 import * as webllm from "@mlc-ai/web-llm";
 import * as Progress from "@radix-ui/react-progress";
 import { Input } from "./components/ui/input";
-import { Send } from "./Chat";
-import { ConvexReactClient, useConvex } from "convex/react";
 import { ConvexClient } from "convex/browser";
 import { api } from "@convex/_generated/api";
 import { FunctionReturnType } from "convex/server";
@@ -41,7 +39,7 @@ class Llama {
     loadingCb: (loading: LoadingState) => void,
     stateCb: (state: State) => void,
     client: ConvexClient,
-    name: string
+    apiKey: string,
   ) {
     loadingCb({ progress: 0, text: "Starting..." });
     const url = new URL("./lib/llamaWebWorker.ts", import.meta.url);
@@ -57,15 +55,15 @@ class Llama {
       },
       appConfig,
     });
-    return new Llama(worker, engine, client, name, stateCb);
+    return new Llama(worker, engine, client, apiKey, stateCb);
   }
 
   constructor(
     private worker: Worker,
     public engine: webllm.EngineInterface,
     private client: ConvexClient,
-    private name: string,
-    private stateCb: (state: State) => void
+    private apiKey: string,
+    public stateCb: (state: State) => void,
   ) {}
 
   async dispose() {
@@ -76,10 +74,6 @@ class Llama {
 
   async workLoop() {
     this.stateCb({ type: "signingUp" });
-    const apiKey = await this.client.mutation(api.workers.signMeUp, {
-      name: this.name,
-    });
-    console.log("Signed up", apiKey);
     while (!this.disposed) {
       const stats = await this.engine.runtimeStatsText();
       this.stateCb({ type: "waitingForWork", stats });
@@ -105,7 +99,7 @@ class Llama {
       }
       this.stateCb({ type: "loadingWork" });
       let work = await this.client.mutation(api.workers.giveMeWork, {
-        apiKey,
+        apiKey: this.apiKey,
       });
       console.log("Starting", work);
       while (work && !this.disposed) {

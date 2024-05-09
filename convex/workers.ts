@@ -251,7 +251,7 @@ export const submitWork = workerMutation({
   },
 });
 
-export const signMeUp = mutation({
+export const signMeUp = internalMutation({
   args: { name: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const apiKey = crypto.randomUUID();
