@@ -217,7 +217,7 @@ function SendMessage() {
   );
 }
 
-function Send(props: React.ComponentPropsWithoutRef<"button">) {
+export function Send(props: React.ComponentPropsWithoutRef<"button">) {
   return (
     <button {...props}>
       <svg

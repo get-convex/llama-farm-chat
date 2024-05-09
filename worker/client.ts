@@ -121,7 +121,7 @@ async function doWork(
   }
 }
 
-function hasDelimeter(response: string) {
+export function hasDelimeter(response: string) {
   return (
     response.includes("\n") ||
     response.includes(".") ||

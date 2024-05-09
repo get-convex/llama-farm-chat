@@ -11,6 +11,7 @@ import { useLocalStorage } from "usehooks-ts";
 
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { LlamaWorker } from "./LlamaWorker";
 dayjs.extend(relativeTime);
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
@@ -22,6 +23,10 @@ const router = createBrowserRouter(
       errorElement: <EmptyPage />,
       element: <App />,
       children: [
+        {
+          path: "/worker",
+          element: <LlamaWorker />,
+        },
         {
           path: "/:uuid",
           element: <Chat />,
