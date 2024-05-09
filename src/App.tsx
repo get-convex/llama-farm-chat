@@ -11,6 +11,7 @@ import { Cross2Icon, HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { useSessionMutation } from "convex-helpers/react/sessions";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Threads } from "./Threads";
+import { LlamaStatus } from "./LlamaWorker";
 
 export default function App() {
   const navigate = useNavigate();
@@ -47,16 +48,21 @@ export default function App() {
           <Outlet />
         </div>
       </div>
-      <footer className="container relative flex h-16 items-center ">
-        <div className="flex h-full w-full justify-end gap-2 bg-my-light-green p-2">
-          <a
-            href="https://www.convex.dev/"
-            className="no-underline"
-            target="_blank"
-          >
-            <span>Powered by</span>
-            <ConvexLogo />
-          </a>
+      <footer className="container ">
+        <div className=" flex h-16 items-center justify-between bg-my-light-green">
+          <div className="flex h-full items-center gap-2">
+            <LlamaStatus className="overflow-hidden" />
+          </div>
+          <div className="h-full justify-end gap-2  p-2">
+            <a
+              href="https://www.convex.dev/"
+              className="no-underline"
+              target="_blank"
+            >
+              <span>Powered by</span>
+              <ConvexLogo />
+            </a>
+          </div>
         </div>
       </footer>
     </div>

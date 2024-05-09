@@ -1,11 +1,5 @@
 import { Button } from "@/components/ui/button";
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import * as webllm from "@mlc-ai/web-llm";
 import * as Progress from "@radix-ui/react-progress";
 import { Input } from "./components/ui/input";
@@ -14,7 +8,6 @@ import { api } from "@convex/_generated/api";
 import { FunctionReturnType } from "convex/server";
 import { WorkerHeartbeatInterval } from "@shared/config";
 import { hasDelimeter } from "../shared/worker";
-import { cn } from "./lib/utils";
 import { useLocalStorage } from "usehooks-ts";
 
 type LoadingState = { progress: number; text: string };
@@ -90,6 +83,8 @@ class Llama {
             reject,
           );
         });
+      } catch (e) {
+        console.error("Error waiting for work", e);
       } finally {
         if (unsubscribe) {
           unsubscribe();
@@ -102,7 +97,7 @@ class Llama {
       console.log("Starting", work);
       while (work && !this.disposed) {
         const start = Date.now();
-        work = await this.doWork(work, apiKey);
+        work = await this.doWork(work, this.apiKey);
         console.log("Finished:", Date.now() - start, "ms");
       }
     }
@@ -110,7 +105,7 @@ class Llama {
 
   async doWork(
     work: FunctionReturnType<typeof api.workers.giveMeWork>,
-    apiKey: string
+    apiKey: string,
   ): Promise<FunctionReturnType<typeof api.workers.giveMeWork>> {
     if (!work) {
       return null;
@@ -151,7 +146,7 @@ class Llama {
         }
         return this.client.mutation(api.workers.submitWork, {
           message: response,
-          state: "streaming",
+          state: "success",
           apiKey,
           jobId,
         });
@@ -183,33 +178,10 @@ class Llama {
 }
 
 export function LlamaWorker() {
-  const [loading, setLoading] = useState<LoadingState | null>(null);
-  const [llama, setLlama] = useState<Llama>();
-  const [name, setName] = useState<string>("");
-  const [state, setState] = useState<State>();
-
-  useEffect(() => {
-    () => {
-      llama && void llama.dispose();
-    };
-  }, [llama]);
-  const startLoading = async () => {
-    console.log("Starting...");
-    const client = new ConvexClient(import.meta.env.VITE_CONVEX_URL as string);
-    console.log(client);
-    try {
-      if (!name) {
-        throw new Error("Please enter a name");
-      }
-      const llama = await Llama.load(setLoading, setState, client, name);
-      setLlama(llama);
-      void llama.workLoop();
-    } catch (e: any) {
-      console.error("Failed to load model", e);
-    } finally {
-      setLoading(null);
-    }
-  };
+  const { llama, state, loading, setApiKey } = useContext(LlamaContext) ?? {};
+  if (!setApiKey) {
+    throw new Error("Missing LlamaProvider");
+  }
 
   // TODO:
   // [ ] Use AI town's waitlist's animated progress bar!
@@ -217,43 +189,143 @@ export function LlamaWorker() {
     <div className="flex flex-1 flex-col items-center justify-center gap-2">
       <h2 className="text-4xl">Be a Llama!</h2>
       <p className="p-4 text-center text-lg">
-        Did you always want to be a llama when you grew up?
+        Did you always want to be a llama shepherd when you grew up?
         <br />
         Join the llama farm and live your childhood dreams!
       </p>
       {!llama && !loading && (
         <>
           <form
-            className="p-2 mt-4 flex items-center gap-2"
-            onSubmit={() => void startLoading()}
+            className="mt-4 flex items-center gap-2 p-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const apiKey = (e.target as any).apiKey.value;
+              setApiKey(apiKey);
+            }}
           >
             <Input
               type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="flex-1 resize-none bg-my-neutral-sprout dark:placeholder-my-dark-green dark:text-my-light-tusk dark:bg-my-light-green"
-              placeholder="Worker name"
+              name={"apiKey"}
+              className="flex-1 resize-none bg-my-neutral-sprout dark:bg-my-light-green dark:text-my-light-tusk dark:placeholder-my-dark-green"
+              placeholder="API key"
+              required
             />
-            <Button type="submit">Start download</Button>
+            <Button type="submit">Start</Button>
           </form>
         </>
       )}
       {!!loading && (
         <>
-          <Progress.Root
-            value={loading.progress}
-            className="relative overflow-hidden bg-my-neutral-sprout rounded-full w-[300px] h-[25px]"
-            style={{ transform: "translateZ(0)" }}
-          >
-            <Progress.Indicator
-              className="bg-my-light-green w-full h-full transition-transform duration-[660ms] ease-[cubic-bezier(0.65, 0, 0.35, 1)]"
-              style={{ transform: `translateX(-${100 - loading.progress}%)` }}
-            />
-          </Progress.Root>
-          <p className="text-small text-center p-4 max-w-lg">{loading.text}</p>
+          <LlamaProgressBar loading={loading} />
+          <p className="text-small max-w-lg p-4 text-center">{loading.text}</p>
         </>
       )}
       {!!state && <pre>{JSON.stringify(state, null, 2)}</pre>}
     </div>
+  );
+}
+
+function LlamaProgressBar({ loading }: { loading: LoadingState }) {
+  return (
+    <>
+      <Progress.Root
+        value={loading.progress}
+        className="relative h-[25px] w-[200px] overflow-hidden rounded-full bg-my-neutral-sprout md:w-[300px]"
+        style={{ transform: "translateZ(0)" }}
+      >
+        <Progress.Indicator
+          className="duration-[660ms] ease-[cubic-bezier(0.65, 0, 0.35, 1)] h-full w-full bg-my-dark-green transition-transform"
+          style={{ transform: `translateX(-${100 - loading.progress}%)` }}
+        />
+      </Progress.Root>
+    </>
+  );
+}
+
+export function LlamaStatus() {
+  const { state, llama, loading } = useContext(LlamaContext) ?? {};
+  if (loading)
+    return (
+      <div className="pl-4">
+        <div className="flex items-center">
+          <LlamaProgressBar loading={loading} />
+          {!llama?.disposed && (
+            <Button
+              className="text-lg"
+              variant={"ghost"}
+              onClick={() => void llama?.dispose().catch(console.error)}
+            >
+              🛑
+            </Button>
+          )}
+        </div>
+        <p className="text-small overflow-hidden text-ellipsis whitespace-nowrap p-0">
+          {loading.text}
+        </p>
+      </div>
+    );
+  if (state) {
+    return (
+      <div className="flex gap-2 px-4">
+        <p>
+          {state.type === "waitingForWork"
+            ? "🦙💤"
+            : state.type === "loadingWork"
+              ? "🦙📨"
+              : state.type === "working"
+                ? "🦙💬"
+                : "🦙🪦"}
+          {"  "}
+        </p>
+        {!llama?.disposed && (
+          <Button
+            className="px-4"
+            onClick={() => void llama?.dispose().catch(console.error)}
+          >
+            🛑
+          </Button>
+        )}
+      </div>
+    );
+  }
+  return null;
+}
+
+export const LlamaContext = createContext<{
+  llama: Llama | undefined;
+  state: State | undefined;
+  loading: LoadingState | null;
+  setApiKey: (apiKey: string) => void;
+} | null>(null);
+
+export function LlamaProvider({ children }: { children: React.ReactNode }) {
+  const [llama, setLlama] = useState<Llama>();
+  const [state, setState] = useState<State>();
+  const [loading, setLoading] = useState<LoadingState | null>(null);
+  const [apiKey, setApiKey] = useLocalStorage("llama-farm-api-key", "");
+
+  useEffect(() => {
+    if (!llama && apiKey && !loading) {
+      const client = new ConvexClient(
+        import.meta.env.VITE_CONVEX_URL as string,
+      );
+      if (!apiKey) {
+        throw new Error("API key is required to start working");
+      }
+      Llama.load(setLoading, setState, client, apiKey)
+        .then((llama) => {
+          setLlama(llama);
+          void llama.workLoop();
+        })
+        .catch((e) => console.error("Failed to load model", e))
+        .finally(() => setLoading(null));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiKey]);
+
+  return (
+    <LlamaContext.Provider value={{ llama, state, loading, setApiKey }}>
+      {children}
+    </LlamaContext.Provider>
   );
 }
