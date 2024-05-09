@@ -12,7 +12,7 @@ import {
 import { usePaginatedQuery } from "convex/react";
 import dayjs from "dayjs";
 import React, { MouseEvent, useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { cn } from "./lib/utils";
 import { useStickyChat } from "./useStickyChat";
 
@@ -21,6 +21,12 @@ export function Chat() {
   const me = useSessionQuery(api.users.me);
   const updateName = useSessionMutation(api.users.updateName);
   const threads = useSessionQuery(api.chat.listThreads);
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!uuid && threads?.length) {
+      navigate(`/${threads[0].uuid}`, { replace: true });
+    }
+  }, [uuid, threads, navigate]);
   const thread = threads?.find((t) => t.uuid === uuid);
   const shuffleName = useCallback(() => {
     updateName({

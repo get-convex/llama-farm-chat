@@ -15,9 +15,6 @@ export function Threads() {
   const threads = useSessionQuery(api.chat.listThreads);
   const navigate = useNavigate();
   const [startThread, startingThread] = useStartThread();
-  if (!uuid && threads?.length) {
-    navigate(`/${threads[0].uuid}`, { replace: true });
-  }
 
   return (
     <div className="h-full bg-my-neutral-sprout dark:bg-my-dark-green flex-1 flex-col gap-4">
