@@ -23,32 +23,32 @@ export default function App() {
         .then((uuid) => navigate(`/${uuid}`, { replace: true }))
         .catch(console.error);
     },
-    [navigate, startThread]
+    [navigate, startThread],
   );
 
   return (
-    <div className="bg-my-white-baja flex flex-col dark:bg-black h-screen">
-      <div className="container h-full flex flex-col md:flex-row overflow-hidden">
-        <div className="flex flex-col md:w-72 md:border-r border-b md:border-b-0 border-my-dark-green dark:border-my-light-tusk">
+    <div className="flex h-screen flex-col bg-my-white-baja dark:bg-black">
+      <div className="container flex h-full flex-col overflow-hidden md:flex-row">
+        <div className="flex flex-col border-b border-my-dark-green dark:border-my-light-tusk md:w-72 md:border-b-0 md:border-r">
           <div className="flex h-[4rem] justify-between bg-my-light-green p-4">
             <ThreadsMenuButton />
             <h1 className="text-2xl">🦙 farm</h1>
             <div className="flex">
               <Button size="icon" variant="ghost" onClick={startThreadHandler}>
-                <PlusIcon className="w-5 h-5" />
+                <PlusIcon className="h-5 w-5" />
               </Button>
             </div>
           </div>
-          <div className="flex-1 flex-col hidden md:block">
+          <div className="hidden flex-1 flex-col md:block">
             <Threads />
           </div>
         </div>
-        <div className="flex-1 h-full overflow-hidden bg-my-light-tusk dark:bg-my-dark-green flex flex-col border-my-dark-green md:border-l-0">
+        <div className="flex h-full flex-1 flex-col overflow-hidden border-my-dark-green bg-my-light-tusk dark:bg-my-dark-green md:border-l-0">
           <Outlet />
         </div>
       </div>
-      <footer className="container flex h-16 items-center ">
-        <div className="p-2 bg-my-light-green w-full h-full flex justify-end gap-2">
+      <footer className="container relative flex h-16 items-center ">
+        <div className="flex h-full w-full justify-end gap-2 bg-my-light-green p-2">
           <a
             href="https://www.convex.dev/"
             className="no-underline"
@@ -77,7 +77,7 @@ function ThreadsMenuButton() {
     <Popover onOpenChange={(open) => setShowMenu(open)}>
       <PopoverTrigger ref={popoverRef} asChild>
         <Button
-          className="md:hidden hover:bg-my-neutral-sprout dark:hover:bg-my-dark-green transition-colors"
+          className="transition-colors hover:bg-my-neutral-sprout dark:hover:bg-my-dark-green md:hidden"
           variant="ghost"
           size="icon"
           onClick={() => setShowMenu(!showMenu)}

@@ -1,5 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { FormEvent, MouseEvent, useCallback, useEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import * as webllm from "@mlc-ai/web-llm";
 import * as Progress from "@radix-ui/react-progress";
 import { Input } from "./components/ui/input";
@@ -8,6 +14,8 @@ import { api } from "@convex/_generated/api";
 import { FunctionReturnType } from "convex/server";
 import { WorkerHeartbeatInterval } from "@shared/config";
 import { hasDelimeter } from "../shared/worker";
+import { cn } from "./lib/utils";
+import { useLocalStorage } from "usehooks-ts";
 
 type LoadingState = { progress: number; text: string };
 
@@ -79,7 +87,7 @@ class Llama {
                 resolve();
               }
             },
-            reject
+            reject,
           );
         });
       } finally {
@@ -206,9 +214,9 @@ export function LlamaWorker() {
   // TODO:
   // [ ] Use AI town's waitlist's animated progress bar!
   return (
-    <div className="flex-1 flex flex-col gap-2 items-center justify-center">
+    <div className="flex flex-1 flex-col items-center justify-center gap-2">
       <h2 className="text-4xl">Be a Llama!</h2>
-      <p className="text-lg text-center p-4">
+      <p className="p-4 text-center text-lg">
         Did you always want to be a llama when you grew up?
         <br />
         Join the llama farm and live your childhood dreams!

@@ -36,7 +36,7 @@ export function Chat() {
 
   return (
     <div className="flex h-full flex-col justify-between">
-      <div className="flex h-[4rem] items-center justify-between bg-my-light-green p-4 w-full">
+      <div className="flex h-[4rem] w-full items-center justify-between bg-my-light-green p-4">
         <h2 className="text-2xl">{thread?.names.join("+")}</h2>
         <Button
           size="icon"
@@ -67,7 +67,7 @@ function Messages() {
   } = usePaginatedQuery(
     api.chat.getThreadMessages,
     useSessionIdArg(uuid ? { uuid } : "skip"),
-    { initialNumItems: 10 }
+    { initialNumItems: 10 },
   );
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement>();
   const handleScrollContainer = useCallback((node: HTMLDivElement) => {
@@ -75,17 +75,17 @@ function Messages() {
   }, []);
   const { hasNewMessages, scrollToBottom } = useStickyChat(
     scrollContainer,
-    messages
+    messages,
   );
   useEffect(() => {
     scrollToBottom();
   }, [scrollToBottom]);
 
   return (
-    <div className="flex flex-1 min-h-0 relative">
+    <div className="relative flex min-h-0 flex-1">
       {hasNewMessages && <NewMessages onClick={scrollToBottom} />}
       <div
-        className="overflow-x-hidden overflow-y-auto flex-1 flex flex-col-reverse items-end px-2 space-y-4"
+        className="flex flex-1 flex-col-reverse items-end space-y-4 overflow-y-auto overflow-x-hidden px-2"
         ref={handleScrollContainer}
       >
         {messages &&
@@ -93,12 +93,12 @@ function Messages() {
             message.role === "system" ? null : (
               <div
                 key={message.id}
-                className={cn("flex  gap-3 w-full", {
+                className={cn("flex  w-full gap-3", {
                   "flex-row-reverse": message.userId === me?._id,
                 })}
               >
                 {message.role === "assistant" ? (
-                  <span className="my-auto py-1.5 rounded-full  bg-my-light-green p-2 text-2xl">
+                  <span className="my-auto rounded-full bg-my-light-green  p-2 py-1.5 text-2xl">
                     🦙
                   </span>
                 ) : (
@@ -110,7 +110,7 @@ function Messages() {
                   </span>
                 )}
                 <div
-                  className={cn("flex flex-col max-w-[80%]", {
+                  className={cn("flex max-w-[80%] flex-col", {
                     "items-end": message.userId === me?._id,
                   })}
                 >
@@ -119,10 +119,10 @@ function Messages() {
                       message.role === "assistant"
                         ? "bg-my-neutral-sprout dark:bg-my-light-green dark:text-my-light-tusk"
                         : "bg-my-white-baja dark:bg-my-neutral-sprout/80 dark:text-my-dark-green",
-                      "p-3 rounded-md max-w-[40vw]"
+                      "max-w-[40vw] rounded-md p-3",
                     )}
                   >
-                    <p className="text-sm whitespace-break-spaces">
+                    <div className="whitespace-break-spaces text-sm">
                       {message.state === "failed"
                         ? "I have failed you ☠️"
                         : message.state === "timedOut"
@@ -131,10 +131,12 @@ function Messages() {
                             ? "waiting for a 🦙..."
                             : (
                                 <Markdown>
-                                  {message.message? DOMPurify.sanitize(message.message) : "🦙💬"}
+                                  {message.message
+                                    ? DOMPurify.sanitize(message.message)
+                                    : "🦙💬"}
                                 </Markdown>
                               ) || "..."}
-                    </p>
+                    </div>
                   </div>
                   <div
                     className={cn("flex px-1", {
@@ -147,7 +149,7 @@ function Messages() {
                   </div>
                 </div>
               </div>
-            )
+            ),
           )}
         {status === "CanLoadMore" && (
           <Button
@@ -168,7 +170,7 @@ function JoinThread() {
   const { uuid } = useParams();
   const joinThread = useSessionMutation(api.chat.joinThread);
   return uuid ? (
-    <div className="p-2 mt-4 flex justify-center">
+    <div className="mt-4 flex justify-center p-2">
       <Button
         className="w-full"
         onClick={() => void joinThread({ uuid }).catch(console.error)}
@@ -196,19 +198,19 @@ function SendMessage() {
           setMessageToSend((messageToSend) => messageToSend || message);
         });
     },
-    [uuid, messageToSend, sendMessage]
+    [uuid, messageToSend, sendMessage],
   );
 
   return (
     <form
-      className="p-2 mt-4 flex items-center gap-2 w-full"
+      className="mt-4 flex w-full items-center gap-2 p-2"
       onSubmit={sendSubmit}
     >
       <Input
         type="text"
         value={messageToSend}
         onChange={(e) => setMessageToSend(e.target.value)}
-        className="flex-1 resize-none bg-my-neutral-sprout dark:placeholder-my-dark-green dark:text-my-light-tusk dark:bg-my-light-green"
+        className="flex-1 resize-none bg-my-neutral-sprout dark:bg-my-light-green dark:text-my-light-tusk dark:placeholder-my-dark-green"
         placeholder="Type your message..."
       />
       <Send
@@ -245,7 +247,7 @@ function Send(props: React.ComponentPropsWithoutRef<"button">) {
 function NewMessages({ onClick }: { onClick(): void }) {
   return (
     <Button
-      className="absolute bottom-0 right-10 z-10 motion-safe:animate-bounceIn"
+      className="motion-safe:animate-bounceIn absolute bottom-0 right-10 z-10"
       size="sm"
       type="button"
       onClick={onClick}

@@ -17,7 +17,7 @@ export function Threads() {
   const [startThread, startingThread] = useStartThread();
 
   return (
-    <div className="h-full bg-my-neutral-sprout dark:bg-my-dark-green flex-1 flex-col gap-4">
+    <div className="h-full flex-1 flex-col gap-4 bg-my-neutral-sprout dark:bg-my-dark-green">
       <div className="flex flex-col gap-2 overflow-y-auto">
         {threads?.length ? (
           threads.map((thread) => (
@@ -26,19 +26,19 @@ export function Threads() {
               className={cn(
                 uuid === thread.uuid &&
                   "bg-my-light-tusk dark:bg-my-light-green",
-                "group relative items-center flex hover:bg-my-light-tusk dark:hover:bg-my-light-green"
+                "group relative flex items-center hover:bg-my-light-tusk dark:hover:bg-my-light-green",
               )}
             >
               <Button
-                className="absolute h-8 w-8 hidden group-hover:flex right-2 p-1  transition-colors rounded-full bg-my-light-green/50 dark:bg-my-dark-green/50 text-my-light-tusk dark:text-my-neutral-sprout hover:bg-my-light-green dark:hover:bg-my-dark-green"
+                className="absolute right-2 hidden h-8 w-8 rounded-full bg-my-light-green/50  p-1 text-my-light-tusk transition-colors hover:bg-my-light-green group-hover:flex dark:bg-my-dark-green/50 dark:text-my-neutral-sprout dark:hover:bg-my-dark-green"
                 onClick={(e) => {
                   e.preventDefault();
                   const next = threads?.find(
-                    (t) => t.uuid !== thread.uuid
+                    (t) => t.uuid !== thread.uuid,
                   )?.uuid;
                   leaveThread({ uuid: thread.uuid })
                     .then(() =>
-                      navigate(next ? `/${next}` : "", { replace: true })
+                      navigate(next ? `/${next}` : "", { replace: true }),
                     )
                     .catch(console.error);
                 }}
@@ -46,17 +46,17 @@ export function Threads() {
                 <XIcon className="" />
               </Button>
               <Link
-                className="flex-1 space-y-1  items-center gap-3 p-3 rounded-md  transition-colors"
+                className="flex-1 items-center  gap-3 space-y-1 rounded-md p-3  transition-colors"
                 to={`/${thread.uuid}`}
               >
                 <p className={cn("text-sm font-medium")}>
                   {thread.description || "..."}
                 </p>
                 <div className="flex  items-center justify-between">
-                  <p className="text-sm  text-my-dark-green dark:text-my-neutral-sprout line-clamp-1">
+                  <p className="line-clamp-1  text-sm text-my-dark-green dark:text-my-neutral-sprout">
                     {thread.names.filter(Boolean).join(" ")}
                   </p>
-                  <span className="group-hover:hidden text-xs text-my-dark-green dark:text-my-neutral-sprout">
+                  <span className="text-xs text-my-dark-green group-hover:hidden dark:text-my-neutral-sprout">
                     created {dayjs(thread.createdAt).fromNow()}
                   </span>
                 </div>
