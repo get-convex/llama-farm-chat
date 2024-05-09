@@ -125,7 +125,7 @@ function Messages() {
                             ? "waiting for a 🦙..."
                             : (
                                 <Markdown>
-                                  {DOMPurify.sanitize(message.message)}
+                                  {message.message? DOMPurify.sanitize(message.message) : "🦙💬"}
                                 </Markdown>
                               ) || "..."}
                     </p>
