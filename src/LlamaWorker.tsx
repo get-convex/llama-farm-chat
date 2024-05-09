@@ -15,13 +15,13 @@ type LoadingState = { progress: number; text: string };
 const MODEL = "Llama-3-8B-Instruct-q4f16_1";
 
 type State =
-  | { type: "signingUp" }
   | { type: "waitingForWork"; stats: string }
   | { type: "loadingWork" }
   | {
       type: "working";
       job: FunctionReturnType<typeof api.workers.giveMeWork>;
-    };
+    }
+  | { type: "stopped" };
 
 class Llama {
   disposed = false;
@@ -31,6 +31,7 @@ class Llama {
     stateCb: (state: State) => void,
     client: ConvexClient,
     apiKey: string,
+    generation: number,
   ) {
     loadingCb({ progress: 0, text: "Starting..." });
     const url = new URL("./lib/llamaWebWorker.ts", import.meta.url);
@@ -46,7 +47,7 @@ class Llama {
       },
       appConfig,
     });
-    return new Llama(worker, engine, client, apiKey, stateCb);
+    return new Llama(worker, engine, client, apiKey, stateCb, generation);
   }
 
   constructor(
@@ -55,20 +56,20 @@ class Llama {
     private client: ConvexClient,
     private apiKey: string,
     public stateCb: (state: State) => void,
+    public generation: number,
   ) {}
 
   async dispose() {
     this.disposed = true;
+    this.stateCb({ type: "stopped" });
     await this.engine.unload();
     this.worker.terminate();
   }
 
   async workLoop() {
-    this.stateCb({ type: "signingUp" });
     while (!this.disposed) {
       const stats = await this.engine.runtimeStatsText();
       this.stateCb({ type: "waitingForWork", stats });
-      console.log("Waiting for work...");
       let unsubscribe: undefined | (() => void);
       try {
         await new Promise<void>((resolve, reject) => {
@@ -303,6 +304,23 @@ export function LlamaProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<State>();
   const [loading, setLoading] = useState<LoadingState | null>(null);
   const [apiKey, setApiKey] = useLocalStorage("llama-farm-api-key", "");
+  // We only run one worker per browser, using local storage as the lock.
+  // We increment the generation to signal older workers to stop.
+  const [generation, setGeneration] = useLocalStorage(
+    "llama-farm-generation",
+    0,
+  );
+
+  useEffect(() => {
+    if (llama && !llama.disposed && generation !== llama.generation) {
+      llama.dispose().catch(console.error);
+    }
+    return () => {
+      if (llama && !llama.disposed) {
+        llama.dispose().catch(console.error);
+      }
+    };
+  }, [generation, llama]);
 
   useEffect(() => {
     if (!llama && apiKey && !loading) {
@@ -312,7 +330,8 @@ export function LlamaProvider({ children }: { children: React.ReactNode }) {
       if (!apiKey) {
         throw new Error("API key is required to start working");
       }
-      Llama.load(setLoading, setState, client, apiKey)
+      setGeneration(generation + 1);
+      Llama.load(setLoading, setState, client, apiKey, generation)
         .then((llama) => {
           setLlama(llama);
           void llama.workLoop();
