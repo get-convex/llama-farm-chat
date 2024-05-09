@@ -11,6 +11,7 @@ import {
   retryWithBackoff,
 } from "../shared/llm";
 import { appendFile } from "fs";
+import { hasDelimeter } from "../shared/worker";
 dotenv.config({ path: [".env", ".env.local"] });
 
 function waitForWork(client: ConvexClient) {
@@ -119,17 +120,6 @@ async function doWork(
   } finally {
     clearInterval(timerId);
   }
-}
-
-export function hasDelimeter(response: string) {
-  return (
-    response.includes("\n") ||
-    response.includes(".") ||
-    response.includes("?") ||
-    response.includes("!") ||
-    response.includes(",") ||
-    response.length > 100
-  );
 }
 
 async function main() {

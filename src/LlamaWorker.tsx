@@ -7,17 +7,7 @@ import { ConvexClient } from "convex/browser";
 import { api } from "@convex/_generated/api";
 import { FunctionReturnType } from "convex/server";
 import { WorkerHeartbeatInterval } from "@shared/config";
-
-function hasDelimeter(response: string) {
-  return (
-    response.includes("\n") ||
-    response.includes(".") ||
-    response.includes("?") ||
-    response.includes("!") ||
-    response.includes(",") ||
-    response.length > 100
-  );
-}
+import { hasDelimeter } from "../shared/worker";
 
 type LoadingState = { progress: number; text: string };
 
