@@ -10,6 +10,7 @@ import { WorkerHeartbeatInterval } from "@shared/config";
 import { hasDelimeter } from "../shared/worker";
 import { useLocalStorage, useSessionStorage } from "usehooks-ts";
 import { Link } from "react-router-dom";
+import LLMWorker from "./lib/llamaWebWorker?worker";
 
 type LoadingState = { progress: number; text: string };
 
@@ -35,8 +36,7 @@ class Llama {
     generation: number,
   ) {
     loadingCb({ progress: 0, text: "Starting..." });
-    const url = new URL("./lib/llamaWebWorker.ts", import.meta.url);
-    const worker = new Worker(url, { type: "module" });
+    const worker = new LLMWorker();
     const appConfig = webllm.prebuiltAppConfig;
     appConfig.useIndexedDBCache = true;
     const engine = await webllm.CreateWebWorkerEngine(worker, MODEL, {
@@ -260,7 +260,7 @@ function LlamaProgressBar({ loading }: { loading: LoadingState }) {
 export function LlamaStatus() {
   const llc = useContext(LlamaContext);
   if (!llc) throw new Error("Missing LlamaProvider");
-  const { state, llama, loading, enabled, setEnabled } = llc;
+  const { state, loading, enabled, setEnabled } = llc;
   if (loading)
     return (
       <Link to="/worker" className="flex max-w-[calc(100%-150px)] items-center">
