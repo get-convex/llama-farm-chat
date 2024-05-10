@@ -70,7 +70,8 @@ class Llama {
   async workLoop() {
     while (!this.disposed) {
       const stats = await this.engine.runtimeStatsText();
-      if (!this.disposed) this.stateCb({ type: "waitingForWork", stats });
+      if (this.disposed) return;
+      this.stateCb({ type: "waitingForWork", stats });
       let unsubscribe: undefined | (() => void);
       try {
         await new Promise<void>((resolve, reject) => {
@@ -92,6 +93,7 @@ class Llama {
           unsubscribe();
         }
       }
+      if (this.disposed) return;
       this.stateCb({ type: "loadingWork" });
       let work = await this.client.mutation(api.workers.giveMeWork, {
         apiKey: this.apiKey,
@@ -325,13 +327,14 @@ export function LlamaProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (llama && !llama.disposed && generation !== llama.generation) {
       llama.dispose().catch(console.error);
+      setEnabled(false);
     }
     return () => {
       if (llama && !llama.disposed) {
         llama.dispose().catch(console.error);
       }
     };
-  }, [generation, llama]);
+  }, [generation, llama, setEnabled]);
 
   useEffect(() => {
     if (!llama && apiKey && !loading && enabled) {
