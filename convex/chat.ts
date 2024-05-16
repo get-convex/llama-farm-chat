@@ -8,6 +8,15 @@ import { completionModels, StreamResponses } from "@shared/config";
 import { literals } from "convex-helpers/validators";
 import { addJob } from "./workers";
 
+export const searchMessages = userQuery({
+  args: { searchString: v.string() },
+  handler: async (ctx, { searchString }) => {
+    if (!ctx.userId) return [];
+    const messages = await ctx.db.query("messages").withSearchIndex("message", (q) => q.search("message", searchString).eq("state", "success")).take(10);
+    return messages;
+  }
+})
+
 export const listThreads = userQuery({
   args: {},
   handler: async (ctx) => {

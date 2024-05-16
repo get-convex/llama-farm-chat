@@ -8,10 +8,12 @@ import {
 } from "@/components/ui/popover";
 import { api } from "@convex/_generated/api";
 import { Cross2Icon, HamburgerMenuIcon } from "@radix-ui/react-icons";
-import { useSessionMutation } from "convex-helpers/react/sessions";
+import { useSessionMutation, useSessionQuery } from "convex-helpers/react/sessions";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Threads } from "./Threads";
 import { LlamaStatus } from "./LlamaWorker";
+import { useQuery } from "convex/react";
+import { Input } from "./components/ui/input";
 
 export default function App() {
   const navigate = useNavigate();
@@ -27,6 +29,9 @@ export default function App() {
     [navigate, startThread],
   );
 
+  const [searchString, setSearchString] = useState("");
+  const searchMessages = useSessionQuery(api.chat.searchMessages, { searchString, });
+
   return (
     <div className="flex h-screen flex-col bg-my-white-baja dark:bg-black">
       <div className="container flex h-full flex-col overflow-hidden md:flex-row">
@@ -40,6 +45,15 @@ export default function App() {
               </Button>
             </div>
           </div>
+          <Input
+            type="text"
+            value={searchString}
+            onChange={(e) => setSearchString(e.target.value)}
+            className="resize-none bg-my-neutral-sprout dark:bg-my-light-green dark:text-my-light-tusk dark:placeholder-my-dark-green"
+            placeholder="Search for a message"
+          />
+          <ul>{searchMessages?.map((msg) => <li className="border-2 p-1">{msg.message}</li>)}</ul>
+          <div></div>
           <div className="hidden flex-1 flex-col md:block">
             <Threads />
           </div>
