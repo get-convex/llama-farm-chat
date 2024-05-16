@@ -8,7 +8,7 @@
     "dev": "npm-run-all --parallel dev:frontend dev:backend",
     "dev:frontend": "vite --open",
     "dev:backend": "just convex dev --tail-logs",
-    "predev": "just convex dev --until-success",
+    "predev": "npx convex dev --until-success",
     "build": "tsc && vite build",
     "lint": "tsc && eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
