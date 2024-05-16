@@ -45,14 +45,18 @@ export default function App() {
               </Button>
             </div>
           </div>
-          <Input
-            type="text"
-            value={searchString}
-            onChange={(e) => setSearchString(e.target.value)}
-            className="resize-none bg-my-neutral-sprout dark:bg-my-light-green dark:text-my-light-tusk dark:placeholder-my-dark-green"
-            placeholder="Search for a message"
-          />
-          <ul>{searchMessages?.map((msg) => <li className="border-2 p-1">{msg.message}</li>)}</ul>
+          <div className="p-2 " >
+            <Input
+              type="text"
+              value={searchString}
+              onChange={(e) => setSearchString(e.target.value)}
+              className="resize-none  bg-my-neutral-sprout dark:bg-my-light-green dark:text-my-light-tusk dark:placeholder-my-dark-green"
+              placeholder="Search for a message"
+            />
+          </div>
+          <div className="relative ">
+            <ul className="absolute z-50 bg-my-white-baja">{searchMessages?.map((msg) => <li className="border-b-2 border-my-neutral-sprout p-1">{msg.message.length > 100 ? msg.message.slice(0, 100) + ".." : msg.message}</li>)}</ul>
+          </div>
           <div></div>
           <div className="hidden flex-1 flex-col md:block">
             <Threads />
@@ -77,7 +81,7 @@ export default function App() {
           </div>
         </div>
       </footer>
-    </div>
+    </div >
   );
 }
 
