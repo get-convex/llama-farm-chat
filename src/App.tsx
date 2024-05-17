@@ -8,7 +8,10 @@ import {
 } from "@/components/ui/popover";
 import { api } from "@convex/_generated/api";
 import { Cross2Icon, HamburgerMenuIcon } from "@radix-ui/react-icons";
-import { useSessionMutation, useSessionQuery } from "convex-helpers/react/sessions";
+import {
+  useSessionMutation,
+  useSessionQuery,
+} from "convex-helpers/react/sessions";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import { Threads } from "./Threads";
 import { LlamaStatus } from "./LlamaWorker";
@@ -30,7 +33,9 @@ export default function App() {
   );
 
   const [searchString, setSearchString] = useState("");
-  const searchMessages = useSessionQuery(api.chat.searchMessages, { searchString, });
+  const searchMessages = useSessionQuery(api.chat.searchMessages, {
+    searchString,
+  });
 
   return (
     <div className="flex h-screen flex-col bg-my-white-baja dark:bg-black">
@@ -45,7 +50,7 @@ export default function App() {
               </Button>
             </div>
           </div>
-          <div className="p-2 " >
+          <div className="p-2 ">
             <Input
               type="text"
               value={searchString}
@@ -55,7 +60,15 @@ export default function App() {
             />
           </div>
           <div className="relative ">
-            <ul className="absolute z-50 bg-my-white-baja">{searchMessages?.map((msg) => <li className="border-b-2 border-my-neutral-sprout p-1">{msg.message.length > 100 ? msg.message.slice(0, 100) + ".." : msg.message}</li>)}</ul>
+            <ul className="absolute z-50 bg-my-white-baja">
+              {searchMessages?.map((msg) => (
+                <li className="border-b-2 border-my-neutral-sprout p-1">
+                  {msg.message.length > 100
+                    ? msg.message.slice(0, 100) + ".."
+                    : msg.message}
+                </li>
+              ))}
+            </ul>
           </div>
           <div></div>
           <div className="hidden flex-1 flex-col md:block">
@@ -81,7 +94,7 @@ export default function App() {
           </div>
         </div>
       </footer>
-    </div >
+    </div>
   );
 }
 
