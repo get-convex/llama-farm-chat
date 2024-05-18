@@ -20,7 +20,7 @@ import { literals } from "convex-helpers/validators";
 export async function addJob(
   ctx: { db: DatabaseWriter },
   messageId: Id<"messages">,
-  stream: boolean
+  stream: boolean,
 ) {
   const message = await validateResponseMessage(ctx, messageId);
   return ctx.db.insert("jobs", {
@@ -56,14 +56,14 @@ const workerMutation = customMutation(mutation, {
       throw new Error("Invalid API key");
     }
 
-    return { ctx: { worker }, args: {} };
+    return { ctx: { worker }, args: { key: args.apiKey } };
   },
 });
 type WorkerCtx = CustomCtx<typeof workerMutation>;
 
 async function validateResponseMessage(
   ctx: { db: DatabaseReader },
-  messageId: Id<"messages">
+  messageId: Id<"messages">,
 ) {
   const message = await ctx.db.get(messageId);
   if (!message) {
@@ -99,7 +99,7 @@ async function claimWork(ctx: WorkerCtx) {
   const attempts = await ctx.db
     .query("jobs")
     .withIndex("responseId", (q) =>
-      q.eq("work.responseId", job.work.responseId)
+      q.eq("work.responseId", job.work.responseId),
     )
     .collect();
   if (attempts.find((j) => j.workerId === ctx.worker._id)) {
@@ -127,8 +127,8 @@ async function claimWork(ctx: WorkerCtx) {
     model: message.author.model,
     messages: pruneNull(
       await asyncMap(message.author.context, (msg) =>
-        ctx.db.get(msg).then(simpleMessage)
-      )
+        ctx.db.get(msg).then(simpleMessage),
+      ),
     ),
   };
 }
@@ -144,7 +144,7 @@ function simpleMessage(message: Doc<"messages"> | null) {
 
 async function scheduleJanitor(
   ctx: { scheduler: Scheduler },
-  job: Doc<"jobs">
+  job: Doc<"jobs">,
 ) {
   if (job.janitorId) {
     await ctx.scheduler.cancel(job.janitorId);
@@ -154,7 +154,7 @@ async function scheduleJanitor(
     internal.workers.markAsDead,
     {
       jobId: job._id,
-    }
+    },
   );
   return janitorId;
 }
@@ -191,7 +191,7 @@ export const imStillWorking = workerMutation({
 async function validateJob(
   ctx: { db: DatabaseReader },
   jobId: Id<"jobs">,
-  worker: Doc<"workers">
+  worker: Doc<"workers">,
 ) {
   const job = await ctx.db.get(jobId);
   if (!job) {
@@ -236,7 +236,7 @@ export const submitWork = workerMutation({
             await ctx.db
               .query("jobs")
               .withIndex("responseId", (q) =>
-                q.eq("work.responseId", message._id)
+                q.eq("work.responseId", message._id),
               )
               .collect()
           ).length;

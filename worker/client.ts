@@ -19,7 +19,7 @@ function waitForWork(client: ConvexClient) {
     const unsubscribe = client.onUpdate(
       api.workers.isThereWork,
       {},
-      async (isWork) => {
+      (isWork) => {
         if (isWork) {
           resolve();
           unsubscribe();

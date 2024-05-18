@@ -78,7 +78,7 @@ class Llama {
           unsubscribe = this.client.onUpdate(
             api.workers.isThereWork,
             {},
-            async (isWork) => {
+            (isWork) => {
               if (isWork) {
                 resolve();
               }

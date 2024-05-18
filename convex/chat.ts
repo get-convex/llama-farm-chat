@@ -38,7 +38,7 @@ export const listThreads = userQuery({
             async (m) => {
               const user = await ctx.db.get(m.userId);
               return user && user.name;
-            }
+            },
           )
         ).concat("🦙");
         return (
@@ -49,7 +49,7 @@ export const listThreads = userQuery({
             names,
           }
         );
-      }
+      },
     );
     return pruneNull(threads);
   },
@@ -148,12 +148,12 @@ export const getThreadMessages = userQuery({
 
 async function anyPendingMessage(
   ctx: { db: DatabaseReader },
-  userId: Id<"users">
+  userId: Id<"users">,
 ) {
   return ctx.db
     .query("messages")
     .withIndex("state", (q) =>
-      q.eq("state", "generating").eq("author.userId", userId)
+      q.eq("state", "generating").eq("author.userId", userId),
     )
     .first();
 }
@@ -207,7 +207,7 @@ export const sendMessage = userMutation({
 
 async function threadFromUuid(
   ctx: { db: DatabaseReader },
-  uuid: string
+  uuid: string,
 ): Promise<Doc<"threads">> {
   const thread = await ctx.db
     .query("threads")
@@ -222,14 +222,14 @@ async function threadFromUuid(
 async function getMembership(
   ctx: { db: DatabaseReader },
   threadId: Id<"threads">,
-  userId?: Id<"users">
+  userId?: Id<"users">,
 ) {
   return (
     userId &&
     (await ctx.db
       .query("threadMembers")
       .withIndex("threadId", (q) =>
-        q.eq("threadId", threadId).eq("userId", userId)
+        q.eq("threadId", threadId).eq("userId", userId),
       )
       .unique())
   );
@@ -237,7 +237,7 @@ async function getMembership(
 
 export function messagesQuery(
   ctx: { db: DatabaseReader },
-  threadId: Id<"threads">
+  threadId: Id<"threads">,
 ) {
   return ctx.db
     .query("messages")
