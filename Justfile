@@ -28,6 +28,11 @@ run-local-backend *ARGS:
     if [ "$(uname)" == "Darwin" ]; then
       if [ "$(uname -m)" == "arm64" ]; then
         pkg=convex-local-backend-aarch64-apple-darwin.zip
+        echo "You now need to right click 'convex-local-backend' and select 'Open'"
+        read -p "Press enter to open this folder"
+        open .
+        read -p "Press enter once you've right-clicked 'convex-local-backend' and clicked 'Open' and answered the dialog"
+        exit 1
       elif [ "$(uname -m)" == "x86_64" ]; then
         pkg=convex-local-backend-x86_64-apple-darwin.zip
       fi
