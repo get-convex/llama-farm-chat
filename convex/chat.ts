@@ -1,6 +1,6 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { Doc, Id } from "./_generated/dataModel";
-import { DatabaseReader } from "./_generated/server";
+import { DatabaseReader, MutationCtx, QueryCtx } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { userMutation, userQuery } from "./users";
 import { asyncMap, pruneNull } from "convex-helpers";
@@ -158,6 +158,182 @@ async function anyPendingMessage(
     .first();
 }
 
+type SlidingRateLimit = {
+  kind: "sliding";
+  rate: number;
+  period: number;
+  burst?: number;
+  maxReserved?: number;
+};
+
+function isMutationCtx(ctx: QueryCtx): ctx is MutationCtx {
+  return "insert" in ctx.db;
+}
+
+function defineRateLimits<Limits extends Record<string, SlidingRateLimit>>(
+  limits: Limits,
+) {
+  async function getExisting(ctx: QueryCtx, name: RateLimitNames, key: string) {
+    return ctx.db
+      .query("rateLimits")
+      .withIndex("name", (q) => q.eq("name", name).eq("key", key))
+      .unique();
+  }
+
+  type RateLimitNames = keyof Limits & string;
+
+  async function resetRateLimit<Name extends string = RateLimitNames>(
+    ctx: MutationCtx,
+    args: { name: Name; key: string },
+  ) {
+    const existing = await getExisting(ctx, args.name, args.key);
+    if (existing) {
+      await ctx.db.delete(existing._id);
+    }
+  }
+
+  async function rateLimit<
+    Ctx extends QueryCtx,
+    Name extends string = RateLimitNames,
+  >(
+    ctx: Ctx,
+    args: Name extends RateLimitNames
+      ? Ctx extends MutationCtx
+        ? {
+            name: Name;
+            key: string;
+            count?: number;
+            consume?: boolean;
+            reserve?: boolean;
+            config?: undefined;
+            throws?: boolean;
+          }
+        : {
+            name: Name;
+            key: string;
+            count?: number;
+            consume: false;
+            reserve?: boolean;
+            config?: undefined;
+            throws?: boolean;
+          }
+      : Ctx extends MutationCtx
+        ? {
+            name: Name;
+            key: string;
+            count?: number;
+            consume?: boolean;
+            reserve?: boolean;
+            config: SlidingRateLimit;
+            throws?: boolean;
+          }
+        : {
+            name: Name;
+            key: string;
+            count?: number;
+            consume: false;
+            reserve?: boolean;
+            config: SlidingRateLimit;
+            throws?: boolean;
+          },
+  ) {
+    const config = limits[args.name] ?? args.config;
+    if (!config) {
+      throw new Error(`Rate limit ${args.name} config not defined.`);
+    }
+    const existing = await getExisting(ctx, args.name, args.key);
+    const now = Date.now();
+    let state: Doc<"rateLimits">["state"];
+    let id = existing?._id;
+    if (existing) {
+      state = existing.state;
+    } else {
+      state = {
+        kind: "sliding",
+        value: config.rate,
+        updatedAt: now,
+      };
+      if (isMutationCtx(ctx)) {
+        id = await ctx.db.insert("rateLimits", {
+          name: args.name,
+          key: args.key,
+          state,
+        });
+      }
+    }
+    const elapsed = now - state.updatedAt;
+    const max = config.burst ?? config.rate;
+    const rate = config.rate / config.period;
+    const value = Math.min(state.value + elapsed * rate, max);
+    const count = args.count ?? 1;
+    if (args.reserve) {
+      if (config.maxReserved && count > max + config.maxReserved) {
+        throw new Error(
+          `Rate limit ${args.name} count exceeds ${max + config.maxReserved}.`,
+        );
+      }
+    } else {
+      if (count > max) {
+        throw new Error(`Rate limit ${args.name} count exceeds ${max}.`);
+      }
+    }
+    let ret: {
+      ok: boolean;
+      retryAt: number | undefined;
+      reserved: boolean;
+    } = { ok: true, retryAt: undefined, reserved: false };
+
+    if (value < count) {
+      const deficit = count - value;
+      const retryAt = now + deficit / rate;
+      if (
+        !args.reserve ||
+        (config.maxReserved && deficit > config.maxReserved)
+      ) {
+        if (args.throws) {
+          throw new ConvexError({
+            kind: "RateLimited",
+            name: args.name,
+            ok: false,
+            retryAt,
+          });
+        }
+        return { ok: false, retryAt, reserved: false };
+      }
+      ret = { ok: false, retryAt, reserved: true };
+    }
+
+    if (args.consume !== false && isMutationCtx(ctx)) {
+      state.updatedAt = now;
+      state.value = value - count;
+      await ctx.db.patch(id!, { state });
+    }
+    return ret;
+  }
+  return { rateLimit, resetRateLimit };
+}
+
+const Second = 1_000;
+const Minute = 60 * Second;
+// const Hour = 60 * Minute;
+
+const { rateLimit, resetRateLimit } = defineRateLimits({
+  sendMessage: { kind: "sliding", rate: 1, period: 30 * Second, burst: 5 },
+});
+
+export const whenCanISendAnotherMessage = userQuery({
+  args: {},
+  handler: async (ctx) => {
+    if (!ctx.userId) return;
+    const { ok, retryAt } = await rateLimit(ctx, {
+      name: "sendMessage",
+      key: ctx.userId,
+      consume: false,
+    });
+    return { ok, retryAt };
+  },
+});
+
 export const sendMessage = userMutation({
   args: {
     message: v.string(),
@@ -173,6 +349,16 @@ export const sendMessage = userMutation({
       author: { role: "user", userId: ctx.userId },
       state: "success",
     });
+
+    const { ok, retryAt } = await rateLimit(ctx, {
+      name: "sendMessage",
+      key: ctx.userId,
+      throws: true,
+    });
+    if (!ok) {
+      return { retryAt };
+    }
+
     if (args.skipAI || (await anyPendingMessage(ctx, ctx.userId))) return;
     const systemContext = await messagesQuery(ctx, threadId)
       .filter((q) => q.eq(q.field("author.role"), "system"))

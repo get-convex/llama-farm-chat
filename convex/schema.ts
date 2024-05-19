@@ -8,6 +8,18 @@ import { literals } from "convex-helpers/validators";
 
 export default defineSchema(
   {
+    rateLimits: defineTable({
+      name: v.string(),
+      key: v.optional(v.string()), // undefined is singleton
+      state:
+        // v.union(
+        v.object({
+          kind: v.literal("sliding"),
+          value: v.number(), // can go negative if capacity is reserved ahead of time
+          updatedAt: v.number(),
+        }),
+      // ),
+    }).index("name", ["name", "key"]),
     users: defineTable({
       name: v.string(),
     }),
@@ -45,7 +57,7 @@ export default defineSchema(
         v.object({
           role: v.literal("user"),
           userId: v.id("users"),
-        })
+        }),
       ),
       state: literals("success", "generating", "failed"),
     })
@@ -61,7 +73,7 @@ export default defineSchema(
         "inProgress",
         "success",
         "failed",
-        "timedOut"
+        "timedOut",
       ),
       lastUpdate: v.number(),
       workerId: v.optional(v.id("workers")),
@@ -85,5 +97,5 @@ export default defineSchema(
   //     that are causing the error.
   //  2. Change this option to `false` and make changes to the data
   //     freely, ignoring the schema. Don't forget to change back to `true`!
-  { schemaValidation: true }
+  { schemaValidation: true },
 );

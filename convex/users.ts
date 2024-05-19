@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import {
+  CustomCtx,
   customMutation,
   customQuery,
 } from "convex-helpers/server/customFunctions";
@@ -41,6 +42,8 @@ export const userMutation = customMutation(mutation, {
     return { ctx: { userId }, args: {} };
   },
 });
+
+export type UserMutationCtx = CustomCtx<typeof userMutation>;
 
 export const me = userQuery({
   args: {},
