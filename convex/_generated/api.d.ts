@@ -16,7 +16,6 @@ import type {
 } from "convex/server";
 import type * as chat from "../chat.js";
 import type * as migrations from "../migrations.js";
-import type * as rateLimitConfig from "../rateLimitConfig.js";
 import type * as users from "../users.js";
 import type * as workers from "../workers.js";
 
@@ -31,7 +30,6 @@ import type * as workers from "../workers.js";
 declare const fullApi: ApiFromModules<{
   chat: typeof chat;
   migrations: typeof migrations;
-  rateLimitConfig: typeof rateLimitConfig;
   users: typeof users;
   workers: typeof workers;
 }>;
