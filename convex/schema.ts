@@ -5,21 +5,11 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { literals } from "convex-helpers/validators";
+import { rateLimitTables } from "convex-helpers/server/rateLimit";
 
 export default defineSchema(
   {
-    rateLimits: defineTable({
-      name: v.string(),
-      key: v.optional(v.string()), // undefined is singleton
-      state:
-        // v.union(
-        v.object({
-          kind: v.literal("sliding"),
-          value: v.number(), // can go negative if capacity is reserved ahead of time
-          updatedAt: v.number(),
-        }),
-      // ),
-    }).index("name", ["name", "key"]),
+    ...rateLimitTables,
     users: defineTable({
       name: v.string(),
     }),
