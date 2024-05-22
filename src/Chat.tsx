@@ -15,6 +15,8 @@ import React, { MouseEvent, useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { cn } from "./lib/utils";
 import { useStickyChat } from "./useStickyChat";
+import { toast } from "./components/ui/use-toast";
+import { isRateLimitError } from "convex-helpers/server/rateLimit";
 
 export function Chat() {
   const { uuid } = useParams();
@@ -57,6 +59,7 @@ export function Chat() {
     </div>
   );
 }
+
 function Messages() {
   const { uuid } = useParams();
   const me = useSessionQuery(api.users.me);
@@ -67,7 +70,7 @@ function Messages() {
   } = usePaginatedQuery(
     api.chat.getThreadMessages,
     useSessionIdArg(uuid ? { uuid } : "skip"),
-    { initialNumItems: 10 },
+    { initialNumItems: 20 },
   );
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement>();
   const handleScrollContainer = useCallback((node: HTMLDivElement) => {
@@ -173,7 +176,24 @@ function JoinThread() {
     <div className="mt-4 flex justify-center p-2">
       <Button
         className="w-full"
-        onClick={() => void joinThread({ uuid }).catch(console.error)}
+        onClick={() =>
+          void joinThread({ uuid }).catch((e) => {
+            console.error(e);
+            if (isRateLimitError(e)) {
+              if (e.data.name === "createUser") {
+                toast({
+                  title: "Sorry, too many people are creating accounts",
+                  description: `You can try again in ${dayjs(e.data.retryAt).fromNow()}.`,
+                });
+              } else {
+                toast({
+                  title: "You're joining threads too quickly",
+                  description: `You can join another in ${dayjs(e.data.retryAt).fromNow()}.`,
+                });
+              }
+            }
+          })
+        }
       >
         Join
       </Button>
@@ -192,9 +212,25 @@ function SendMessage() {
       const message = messageToSend;
       setMessageToSend("");
       sendMessage({ message, model: "llama3", uuid })
-        // .then(() => {})
+        .then((rateLimited) => {
+          if (rateLimited) {
+            console.error("Rate limited", rateLimited);
+            setMessageToSend((messageToSend) => messageToSend || message);
+            toast({
+              title: "You're sending messages too quickly",
+              description: `You can send another in ${dayjs(rateLimited.retryAt).fromNow()}.`,
+            });
+          }
+        })
         .catch((e) => {
-          console.error(e);
+          if (isRateLimitError(e)) {
+            toast({
+              title: "Sorry, too many people are creating accounts",
+              description: `You can try again in ${dayjs(e.data.retryAt).fromNow()}.`,
+            });
+          } else {
+            console.error(e);
+          }
           setMessageToSend((messageToSend) => messageToSend || message);
         });
     },

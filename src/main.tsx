@@ -11,6 +11,7 @@ import { useLocalStorage } from "usehooks-ts";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { LlamaWorker, LlamaProvider } from "./LlamaWorker";
+import { Toaster } from "./components/ui/toaster";
 dayjs.extend(relativeTime);
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
@@ -45,6 +46,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <LlamaProvider>
       <SessionProvider useStorage={useLocalStorage}>
         <RouterProvider router={router} />
+        <Toaster />
       </SessionProvider>
     </LlamaProvider>
   </ConvexProvider>,

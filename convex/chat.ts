@@ -10,8 +10,26 @@ import { addJob } from "./workers";
 import { defineRateLimits } from "convex-helpers/server/rateLimit";
 
 const Second = 1000;
+const Minute = 60 * Second;
+
 export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
-  sendMessage: { kind: "sliding", rate: 1, period: 30 * Second, burst: 5 },
+  sendMessage: {
+    kind: "token bucket",
+    rate: 10,
+    period: Minute,
+    capacity: 3,
+  },
+  startThread: {
+    kind: "token bucket",
+    rate: 1,
+    period: Minute,
+    capacity: 2,
+  },
+  joinThread: {
+    kind: "token bucket",
+    rate: 1,
+    period: Second,
+  },
 });
 
 export const listThreads = userQuery({
@@ -65,6 +83,11 @@ export const startThread = userMutation({
   args: { systemPrompt: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const uuid = crypto.randomUUID();
+    await rateLimit(ctx, {
+      name: "startThread",
+      key: ctx.userId,
+      throws: true,
+    });
     const threadId = await ctx.db.insert("threads", { uuid });
     await ctx.db.insert("threadMembers", { threadId, userId: ctx.userId });
     if (args.systemPrompt) {
@@ -87,6 +110,11 @@ export const joinThread = userMutation({
     const thread = await threadFromUuid(ctx, args.uuid);
     const existing = await getMembership(ctx, thread._id, ctx.userId);
     if (!existing) {
+      await rateLimit(ctx, {
+        name: "joinThread",
+        key: ctx.userId,
+        throws: true,
+      });
       await ctx.db.insert("threadMembers", {
         threadId: thread._id,
         userId: ctx.userId,
@@ -172,7 +200,7 @@ export const whenCanISendAnotherMessage = userQuery({
       name: "sendMessage",
       key: ctx.userId,
     });
-    return { ok, retryAt };
+    return { now: ok, retryAt };
   },
 });
 
@@ -185,21 +213,19 @@ export const sendMessage = userMutation({
   },
   handler: async (ctx, args) => {
     const { _id: threadId } = await threadFromUuid(ctx, args.uuid);
+    const { ok, retryAt } = await rateLimit(ctx, {
+      name: "sendMessage",
+      key: ctx.userId,
+    });
+    if (!ok) {
+      return { retryAt };
+    }
     await ctx.db.insert("messages", {
       message: args.message,
       threadId,
       author: { role: "user", userId: ctx.userId },
       state: "success",
     });
-
-    const { ok, retryAt } = await rateLimit(ctx, {
-      name: "sendMessage",
-      key: ctx.userId,
-      throws: true,
-    });
-    if (!ok) {
-      return { retryAt };
-    }
 
     if (args.skipAI || (await anyPendingMessage(ctx, ctx.userId))) return;
     const systemContext = await messagesQuery(ctx, threadId)

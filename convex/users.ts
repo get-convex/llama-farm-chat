@@ -6,6 +6,24 @@ import {
   customQuery,
 } from "convex-helpers/server/customFunctions";
 import { Emojis } from "@shared/config";
+import { defineRateLimits } from "convex-helpers/server/rateLimit";
+
+const Second = 1000;
+const Minute = 60 * Second;
+
+export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
+  createUser: {
+    kind: "token bucket",
+    rate: 1,
+    period: Minute,
+    capacity: 50,
+  },
+  updateName: {
+    kind: "token bucket",
+    rate: 1,
+    period: Second,
+  },
+});
 
 export const userQuery = customQuery(query, {
   args: {
@@ -33,6 +51,11 @@ export const userMutation = customMutation(mutation, {
     if (user) {
       userId = user.userId;
     } else {
+      await rateLimit(ctx, {
+        name: "createUser",
+        key: args.sessionId,
+        throws: true,
+      });
       userId = await ctx.db.insert("users", {
         name: Emojis[Math.floor(Math.random() * Emojis.length)],
       });
@@ -56,6 +79,11 @@ export const me = userQuery({
 export const updateName = userMutation({
   args: { name: v.string() },
   handler: async (ctx, args) => {
+    await rateLimit(ctx, {
+      name: "updateName",
+      key: ctx.userId,
+      throws: true,
+    });
     return ctx.db.patch(ctx.userId, { name: args.name });
   },
 });

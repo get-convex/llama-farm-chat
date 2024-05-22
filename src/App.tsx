@@ -1,4 +1,4 @@
-import React, { MouseEvent, useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -6,26 +6,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { api } from "@convex/_generated/api";
 import { Cross2Icon, HamburgerMenuIcon } from "@radix-ui/react-icons";
-import { useSessionMutation } from "convex-helpers/react/sessions";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { Threads } from "./Threads";
 import { LlamaStatus } from "./LlamaWorker";
+import { useStartThread } from "./useStartThread";
 
 export default function App() {
-  const navigate = useNavigate();
-  const startThread = useSessionMutation(api.chat.startThread);
-
-  const startThreadHandler = useCallback(
-    (e: MouseEvent<HTMLButtonElement>) => {
-      e.preventDefault();
-      startThread({})
-        .then((uuid) => navigate(`/${uuid}`, { replace: true }))
-        .catch(console.error);
-    },
-    [navigate, startThread],
-  );
+  const [startThreadHandler, startingThread] = useStartThread();
 
   return (
     <div className="flex h-screen flex-col bg-my-white-baja dark:bg-black">
@@ -35,7 +23,12 @@ export default function App() {
             <ThreadsMenuButton />
             <h1 className="text-2xl">🦙 farm</h1>
             <div className="flex">
-              <Button size="icon" variant="ghost" onClick={startThreadHandler}>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={startThreadHandler}
+                disabled={startingThread}
+              >
                 <PlusIcon className="h-5 w-5" />
               </Button>
             </div>
