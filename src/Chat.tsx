@@ -33,7 +33,16 @@ export function Chat() {
   const shuffleName = useCallback(() => {
     updateName({
       name: Emojis[Math.floor(Math.random() * Emojis.length)],
-    }).catch(console.error);
+    }).catch((e) => {
+      if (isRateLimitError(e)) {
+        toast({
+          title: "You're changing names too quickly",
+          description: `You can change your name again in ${dayjs(e.data.retryAt).fromNow()}.`,
+        });
+      } else {
+        console.error(e);
+      }
+    });
   }, [updateName]);
 
   return (
