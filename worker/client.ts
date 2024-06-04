@@ -1,126 +1,17 @@
 import inquirer from "inquirer";
 import dotenv from "dotenv";
 import { ConvexClient } from "convex/browser";
-import { FunctionReturnType } from "convex/server";
 import { api } from "../convex/_generated/api";
-import { WorkerHeartbeatInterval, completionModels } from "../shared/config";
 import {
-  chatCompletion,
+  chatCompletions,
   LLM_CONFIG,
   pullOllama,
   retryWithBackoff,
 } from "../shared/llm";
 import { appendFile } from "fs";
-import { hasDelimeter } from "../shared/worker";
+import { doWork } from "../shared/worker";
+import { waitForWork } from "../shared/worker";
 dotenv.config({ path: [".env", ".env.local"] });
-
-function waitForWork(client: ConvexClient) {
-  return new Promise<void>((resolve, reject) => {
-    const unsubscribe = client.onUpdate(
-      api.workers.isThereWork,
-      {},
-      (isWork) => {
-        if (isWork) {
-          resolve();
-          unsubscribe();
-        }
-      },
-      reject,
-    );
-  });
-}
-
-async function doWork(
-  work: FunctionReturnType<typeof api.workers.giveMeWork>,
-  client: ConvexClient,
-  apiKey: string,
-) {
-  if (!work) {
-    return null;
-  }
-  const model = work.model ?? LLM_CONFIG.chatModel;
-  if (!completionModels.find((m) => m === model)) {
-    await client.mutation(api.workers.submitWork, {
-      message: `Invalid model: ${model}`,
-      state: "failed",
-      apiKey,
-      jobId: work.jobId,
-    });
-  }
-  console.debug(work);
-  const { messages, jobId } = work;
-  const timerId = setInterval(() => {
-    console.debug("Still working...");
-    client
-      .mutation(api.workers.imStillWorking, { apiKey, jobId })
-      .then(console.log)
-      .catch(console.error);
-  }, WorkerHeartbeatInterval);
-  try {
-    const { retries, result } = await retryWithBackoff(async () => {
-      if (work.stream) {
-        const { content: stream } = await chatCompletion({
-          stream: true,
-          model,
-          messages,
-        });
-        let totalLength = 0;
-        let response = "";
-        for await (const part of stream.read()) {
-          response += part;
-          // Some debouncing to avoid sending too many messages.
-          if (hasDelimeter(response)) {
-            console.debug("part:", response);
-            totalLength += response.length;
-            await client.mutation(api.workers.submitWork, {
-              message: response,
-              state: "streaming",
-              apiKey,
-              jobId,
-            });
-            response = "";
-          }
-        }
-        if (response) console.debug("part:", response);
-        if (!response && totalLength === 0)
-          throw { error: "No response", retry: true };
-        console.debug("Finished streaming");
-        return client.mutation(api.workers.submitWork, {
-          message: response,
-          state: "success",
-          apiKey,
-          jobId,
-        });
-      } else {
-        const { content } = await chatCompletion({
-          stream: false,
-          model,
-          messages,
-        });
-        console.debug("Response:", content);
-        if (!content) throw { error: "No response", retry: true };
-        return client.mutation(api.workers.submitWork, {
-          message: content,
-          state: "success",
-          apiKey,
-          jobId,
-        });
-      }
-    });
-    if (retries > 0) console.warn("Retried", retries, "times");
-    return result;
-  } catch (e) {
-    console.error(e);
-    return client.mutation(api.workers.submitWork, {
-      message: e instanceof Error ? e.message : String(e),
-      state: "failed",
-      apiKey,
-      jobId,
-    });
-  } finally {
-    clearInterval(timerId);
-  }
-}
 
 async function main() {
   const key = process.env.WORKER_API_KEY || undefined;
@@ -178,7 +69,13 @@ async function main() {
     let work = await client.mutation(api.workers.giveMeWork, { apiKey });
     while (work) {
       const start = Date.now();
-      work = await doWork(work, client, apiKey);
+      work = await doWork(
+        work,
+        client,
+        apiKey,
+        chatCompletions,
+        LLM_CONFIG.chatModel,
+      );
       console.log("Finished:", Date.now() - start, "ms");
     }
   }

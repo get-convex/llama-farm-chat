@@ -7,10 +7,11 @@ import { ConvexClient } from "convex/browser";
 import { api } from "@convex/_generated/api";
 import { FunctionReturnType } from "convex/server";
 import { WorkerHeartbeatInterval } from "@shared/config";
-import { hasDelimeter } from "../shared/worker";
+import { doWork, hasDelimeter, waitForWork } from "../shared/worker";
 import { useLocalStorage, useSessionStorage } from "usehooks-ts";
 import { Link } from "react-router-dom";
 import LLMWorker from "./lib/llamaWebWorker?worker&inline";
+import { Completions } from "@shared/llm";
 
 type LoadingState = { progress: number; text: string };
 
@@ -72,27 +73,7 @@ class Llama {
       const stats = await this.engine.runtimeStatsText();
       if (this.disposed) return;
       this.stateCb({ type: "waitingForWork", stats });
-      let unsubscribe: undefined | (() => void);
-      try {
-        await new Promise<void>((resolve, reject) => {
-          unsubscribe = this.client.onUpdate(
-            api.workers.isThereWork,
-            {},
-            (isWork) => {
-              if (isWork) {
-                resolve();
-              }
-            },
-            reject,
-          );
-        });
-      } catch (e) {
-        console.error("Error waiting for work", e);
-      } finally {
-        if (unsubscribe) {
-          unsubscribe();
-        }
-      }
+      await waitForWork(this.client);
       if (this.disposed) return;
       this.stateCb({ type: "loadingWork" });
       let work = await this.client.mutation(api.workers.giveMeWork, {
@@ -101,82 +82,16 @@ class Llama {
       console.log("Starting", work);
       while (work && !this.disposed) {
         const start = Date.now();
-        work = await this.doWork(work, this.apiKey);
+        this.stateCb({ type: "working", job: work });
+        work = await doWork(
+          work,
+          this.client,
+          this.apiKey,
+          this.engine.chat.completions as Completions,
+          MODEL,
+        );
         console.log("Finished:", Date.now() - start, "ms");
       }
-    }
-  }
-
-  async doWork(
-    work: FunctionReturnType<typeof api.workers.giveMeWork>,
-    apiKey: string,
-  ): Promise<FunctionReturnType<typeof api.workers.giveMeWork>> {
-    if (!work) {
-      return null;
-    }
-    this.stateCb({ type: "working", job: work });
-    const { messages, jobId } = work;
-    const timerId = setInterval(() => {
-      console.debug("Still working...");
-      this.client
-        .mutation(api.workers.imStillWorking, { apiKey, jobId })
-        .then(console.log)
-        .catch(console.error);
-    }, WorkerHeartbeatInterval);
-    try {
-      if (work.stream) {
-        const completion = await this.engine.chat.completions.create({
-          stream: true,
-          messages,
-          temperature: 0.5,
-          max_gen_len: 1024,
-        });
-        let response = "";
-        for await (const chunk of completion) {
-          const part = chunk.choices[0].delta.content;
-          if (part) {
-            response += part;
-          }
-          if (hasDelimeter(response)) {
-            await this.client.mutation(api.workers.submitWork, {
-              message: response,
-              state: "streaming",
-              apiKey,
-              jobId,
-            });
-            console.log(response);
-            response = "";
-          }
-        }
-        return this.client.mutation(api.workers.submitWork, {
-          message: response,
-          state: "success",
-          apiKey,
-          jobId,
-        });
-      } else {
-        const completion = await this.engine.chat.completions.create({
-          stream: false,
-          messages,
-        });
-        const message = completion.choices[0].message;
-        return this.client.mutation(api.workers.submitWork, {
-          message: message.content ?? "",
-          state: "success",
-          apiKey,
-          jobId,
-        });
-      }
-    } catch (e) {
-      console.error(e);
-      return this.client.mutation(api.workers.submitWork, {
-        message: e instanceof Error ? e.message : String(e),
-        state: "failed",
-        apiKey,
-        jobId,
-      });
-    } finally {
-      clearInterval(timerId);
     }
   }
 }
