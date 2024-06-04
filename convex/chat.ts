@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { Doc, Id } from "./_generated/dataModel";
 import { DatabaseReader } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
@@ -9,26 +9,27 @@ import { literals } from "convex-helpers/validators";
 import { addJob } from "./workers";
 import { defineRateLimits } from "convex-helpers/server/rateLimit";
 
-const Second = 1000;
-const Minute = 60 * Second;
+const SECOND = 1000;
+const MINUTE = 60 * SECOND;
+const MAX_GROUP_SIZE = 25;
 
 export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
   sendMessage: {
     kind: "token bucket",
     rate: 10,
-    period: Minute,
+    period: MINUTE,
     capacity: 3,
   },
   startThread: {
     kind: "token bucket",
     rate: 1,
-    period: Minute,
+    period: MINUTE,
     capacity: 2,
   },
   joinThread: {
     kind: "token bucket",
     rate: 1,
-    period: Second,
+    period: SECOND,
   },
 });
 
@@ -115,6 +116,15 @@ export const joinThread = userMutation({
         key: ctx.userId,
         throws: true,
       });
+      const members = await ctx.db
+        .query("threadMembers")
+        .withIndex("threadId", (q) => q.eq("threadId", thread._id))
+        .collect();
+      if (members.length >= MAX_GROUP_SIZE) {
+        throw new ConvexError({
+          kind: "MAX_GROUP_SIZE",
+        });
+      }
       await ctx.db.insert("threadMembers", {
         threadId: thread._id,
         userId: ctx.userId,

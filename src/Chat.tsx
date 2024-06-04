@@ -17,6 +17,7 @@ import { cn } from "./lib/utils";
 import { useStickyChat } from "./useStickyChat";
 import { toast } from "./components/ui/use-toast";
 import { isRateLimitError } from "convex-helpers/server/rateLimit";
+import { ConvexError } from "convex/values";
 
 export function Chat() {
   const { uuid } = useParams();
@@ -38,6 +39,11 @@ export function Chat() {
         toast({
           title: "You're changing names too quickly",
           description: `You can change your name again in ${dayjs(e.data.retryAt).fromNow()}.`,
+        });
+      } else if (e instanceof ConvexError && e.data.kind === "MAX_GROUP_SIZE") {
+        toast({
+          title: "Joining this group failed",
+          description: "This group is at capacity. Try making a new one.",
         });
       } else {
         console.error(e);

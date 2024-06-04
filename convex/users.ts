@@ -8,20 +8,20 @@ import {
 import { Emojis } from "@shared/config";
 import { defineRateLimits } from "convex-helpers/server/rateLimit";
 
-const Second = 1000;
-const Minute = 60 * Second;
+const SECOND = 1000;
+const MINUTE = 60 * SECOND;
 
 export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
   createUser: {
     kind: "token bucket",
     rate: 1,
-    period: Minute,
+    period: MINUTE,
     capacity: 50,
   },
   updateName: {
     kind: "token bucket",
     rate: 1,
-    period: Second,
+    period: SECOND,
   },
 });
 
