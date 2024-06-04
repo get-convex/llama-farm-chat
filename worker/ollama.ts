@@ -1,4 +1,9 @@
-import { join, Config, completionsViaFetch } from "@shared/llm";
+import {
+  join,
+  Config,
+  completionsViaFetch,
+  SimpleEmbeddingsAPI,
+} from "@shared/llm";
 import { retryWithBackoff } from "@shared/retryWithBackoff";
 import { Embedding, EmbeddingsAPI } from "@shared/openai_types";
 
@@ -19,7 +24,7 @@ export const CONFIG: Config = {
 
 export const completions = completionsViaFetch(CONFIG);
 
-export const embeddings: EmbeddingsAPI = {
+export const embeddings: EmbeddingsAPI & SimpleEmbeddingsAPI = {
   async create(body) {
     const texts =
       typeof body.input === "string" || typeof body.input[0] === "number"
@@ -58,6 +63,7 @@ export const embeddings: EmbeddingsAPI = {
       },
     };
   },
+
   async simple(text) {
     const { data } = await embeddings.create({
       input: text,

@@ -68,6 +68,16 @@ class Llama {
   }
 
   async workLoop() {
+    const completions = {
+      create: async (body) => {
+        // A few modififications to get the types & runtime working.
+        const { model: _m, tool_choice: _t, ...modified } = body;
+        return await this.engine.chat.completions.create({
+          ...modified,
+          max_gen_len: 1024,
+        });
+      },
+    } as CompletionsAPI;
     while (!this.disposed) {
       const stats = await this.engine.runtimeStatsText();
       if (this.disposed) return;
@@ -82,13 +92,7 @@ class Llama {
       while (work && !this.disposed) {
         const start = Date.now();
         this.stateCb({ type: "working", job: work });
-        work = await doWork(
-          work,
-          this.client,
-          this.apiKey,
-          this.engine.chat.completions as CompletionsAPI,
-          MODEL,
-        );
+        work = await doWork(work, this.client, this.apiKey, completions, MODEL);
         console.log("Finished:", Date.now() - start, "ms");
       }
     }

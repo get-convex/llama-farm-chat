@@ -1,17 +1,12 @@
 import type {
   ChatCompletion,
   ChatCompletionChunk,
+  ChatCompletionMessageParam,
   CompletionsAPI,
   CreateEmbeddingResponse,
   EmbeddingsAPI,
 } from "./openai_types";
 import { retryWithBackoff } from "./retryWithBackoff";
-// import { OpenAI } from "openai";
-// import { Completions as C2 } from "@mlc-ai/web-llm/lib/openai_api_protocols/chat_completion";
-
-// const o = new OpenAI();
-// const b: Completions = o.chat.completions;
-// const c: Completions = {} as C2;
 
 export type Config = {
   url: string;
@@ -33,7 +28,16 @@ export const OPENAI_CONFIG: Config = {
   embeddingModel: "text-embedding-ada-002", // dim 1536
 };
 
-export function completionsViaFetch(config: Config): CompletionsAPI {
+export type SimpleCompletionsAPI = {
+  simple: (messages: ChatCompletionMessageParam[]) => Promise<string>;
+  stream: (
+    messages: ChatCompletionMessageParam[],
+  ) => Promise<AsyncIterable<string>>;
+};
+
+export function completionsViaFetch(
+  config: Config,
+): CompletionsAPI & SimpleCompletionsAPI {
   const api = {
     async create(body) {
       if (config.extraStopWords) {
@@ -104,12 +108,20 @@ export function completionsViaFetch(config: Config): CompletionsAPI {
         return json;
       }
     },
+  } as CompletionsAPI;
+  return {
+    ...api,
     simple: async (messages) => {
       const response = await api.create({
         model: config.chatModel,
         messages,
         stream: false,
       });
+      if (!response.choices[0].message?.content) {
+        throw new Error(
+          "Unexpected result from OpenAI: " + JSON.stringify(response),
+        );
+      }
       return response.choices[0].message.content;
     },
     stream: async (messages) => {
@@ -128,8 +140,7 @@ export function completionsViaFetch(config: Config): CompletionsAPI {
         },
       };
     },
-  } as CompletionsAPI;
-  return api;
+  };
 }
 
 function shouldRetry(response: Response) {
@@ -186,8 +197,15 @@ export const AuthHeaders = (): Record<string, string> =>
     ? { Authorization: "Bearer " + process.env.LLM_API_KEY }
     : {};
 
-export function embeddingsViaFetch(config: Config): EmbeddingsAPI {
-  const api = {
+export type SimpleEmbeddingsAPI = {
+  simple: (text: string) => Promise<Array<number>>;
+  batch: (texts: string[]) => Promise<Array<Array<number>>>;
+};
+
+export function embeddingsViaFetch(
+  config: Config,
+): EmbeddingsAPI & SimpleEmbeddingsAPI {
+  const api: EmbeddingsAPI = {
     create: async (body) => {
       const {
         result: json,
@@ -217,6 +235,9 @@ export function embeddingsViaFetch(config: Config): EmbeddingsAPI {
       console.debug({ usage: json.usage?.total_tokens, retries, ms });
       return json;
     },
+  };
+  return {
+    ...api,
     simple: async (text) => {
       const json = await api.create({
         input: text,
@@ -233,6 +254,5 @@ export function embeddingsViaFetch(config: Config): EmbeddingsAPI {
       allembeddings.sort((a, b) => a.index - b.index);
       return allembeddings.map(({ embedding }) => embedding);
     },
-  } as EmbeddingsAPI;
-  return api;
+  };
 }

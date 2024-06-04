@@ -3,6 +3,7 @@
 /**
  * Types to use as our API. Changes are marked with // CHANGE
  */
+
 // CHANGE
 export interface CompletionsAPI {
   /**
@@ -12,10 +13,6 @@ export interface CompletionsAPI {
   create(
     body: ChatCompletionCreateParamsStreaming,
   ): Promise<AsyncIterable<ChatCompletionChunk>>;
-  simple(messages: ChatCompletionMessageParam[]): Promise<string>;
-  stream(
-    messages: ChatCompletionMessageParam[],
-  ): Promise<AsyncIterable<string>>;
 }
 /**
  * Represents a chat completion response returned by model, based on the provided
@@ -842,9 +839,6 @@ export interface ChatCompletionCreateParamsBase {
    * [Learn more](https://platform.openai.com/docs/guides/safety-best-practices/end-user-ids).
    */
   user?: string;
-
-  // CHANGE
-  max_gen_len?: number;
 }
 
 export namespace ChatCompletionCreateParams {
@@ -987,10 +981,6 @@ export interface EmbeddingsAPI {
    * Creates an embedding vector representing the input text.
    */
   create(body: EmbeddingCreateParams): Promise<CreateEmbeddingResponse>;
-  // CHANGE
-  simple(text: string): Promise<Array<number>>;
-  // CHANGE
-  batch(text: string[]): Promise<Array<Array<number>>>;
 }
 
 export interface CreateEmbeddingResponse {
@@ -1073,11 +1063,11 @@ export interface EmbeddingCreateParams {
    * [Model overview](https://platform.openai.com/docs/models/overview) for
    * descriptions of them.
    */
-  model:
-    | (string & NonNullable<unknown>) // CHANGE
-    | "text-embedding-ada-002"
-    | "text-embedding-3-small"
-    | "text-embedding-3-large";
+  model: string; // CHANGE
+  // | (string & NonNullable<unknown>)
+  // | "text-embedding-ada-002"
+  // | "text-embedding-3-small"
+  // | "text-embedding-3-large";
 
   /**
    * The number of dimensions the resulting output embeddings should have. Only

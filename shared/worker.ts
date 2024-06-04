@@ -72,7 +72,6 @@ export async function doWork(
         messages,
         model,
         temperature: 0.5,
-        max_gen_len: 1024,
       });
       let totalLength = 0;
       let response = "";
