@@ -3,15 +3,17 @@ import {
   Config,
   completionsViaFetch,
   SimpleEmbeddingsAPI,
+  simpleCompletionsAPI,
 } from "@shared/llm";
 import { retryWithBackoff } from "@shared/retryWithBackoff";
 import { Embedding, EmbeddingsAPI } from "@shared/openai_types";
 
+const CHAT_MODEL = "llama3";
+const EMBEDDING_MODEL = "mxbai-embed-large"; // dim 1024
+
 export const CONFIG: Config = {
   url: "http://127.0.0.1:11434",
   extraStopWords: ["<|eot_id|>"],
-  chatModel: "llama3",
-  embeddingModel: "mxbai-embed-large", // dim 1024
   // embeddingsModel: "llama3", // dim 4096
   onError: async (response, model) => {
     if (response.status === 404) {
@@ -24,7 +26,9 @@ export const CONFIG: Config = {
 
 export const completions = completionsViaFetch(CONFIG);
 
-export const embeddings: EmbeddingsAPI & SimpleEmbeddingsAPI = {
+export const { chat, stream } = simpleCompletionsAPI(completions, CHAT_MODEL);
+
+export const embeddings: EmbeddingsAPI = {
   async create(body) {
     const texts =
       typeof body.input === "string" || typeof body.input[0] === "number"
@@ -63,18 +67,20 @@ export const embeddings: EmbeddingsAPI & SimpleEmbeddingsAPI = {
       },
     };
   },
+};
 
-  async simple(text) {
+export const { embed, embedBatch }: SimpleEmbeddingsAPI = {
+  embed: async (text) => {
     const { data } = await embeddings.create({
       input: text,
-      model: CONFIG.embeddingModel,
+      model: EMBEDDING_MODEL,
     });
     return data[0].embedding;
   },
-  async batch(texts) {
+  embedBatch: async (texts) => {
     const { data } = await embeddings.create({
       input: texts,
-      model: CONFIG.embeddingModel,
+      model: EMBEDDING_MODEL,
     });
     const allembeddings = data;
     allembeddings.sort((a, b) => a.index - b.index);

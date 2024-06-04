@@ -10,35 +10,110 @@ import { retryWithBackoff } from "./retryWithBackoff";
 
 export type Config = {
   url: string;
-  chatModel: string;
-  embeddingModel: string;
   onError?: (response: Response, model: string) => boolean | Promise<boolean>;
   extraStopWords?: string[];
 };
 
-export const TOGETHER_CONFIG: Config = {
+export const CONFIG = {
+  // Together AI:
   url: "https://api.together.xyz",
   chatModel: "meta-llama/Llama-3-8b-chat-hf",
   embeddingModel: "togethercomputer/m2-bert-80M-8k-retrieval", // dim 768
+  // OpenAI:
+  // url: "https://api.openai.com",
+  // chatModel: "gpt-3.5-turbo-16k",
+  // embeddingModel: "text-embedding-ada-002", // dim 1536
 };
-
-export const OPENAI_CONFIG: Config = {
-  url: "https://api.openai.com",
-  chatModel: "gpt-3.5-turbo-16k",
-  embeddingModel: "text-embedding-ada-002", // dim 1536
-};
+export const completions = completionsViaFetch(CONFIG);
+export const embeddings = embeddingsViaFetch(CONFIG);
+export const { chat, stream } = simpleCompletionsAPI(
+  completions,
+  CONFIG.chatModel,
+);
+export const { embed, embedBatch } = simpleEmbeddingsAPI(
+  embeddings,
+  CONFIG.embeddingModel,
+);
 
 export type SimpleCompletionsAPI = {
-  simple: (messages: ChatCompletionMessageParam[]) => Promise<string>;
+  chat: (messages: ChatCompletionMessageParam[]) => Promise<string>;
   stream: (
     messages: ChatCompletionMessageParam[],
   ) => Promise<AsyncIterable<string>>;
 };
 
-export function completionsViaFetch(
-  config: Config,
-): CompletionsAPI & SimpleCompletionsAPI {
-  const api = {
+// const api = simpleCompletionsAPI(new OpenA().chat.completions, "gpt-4");
+export function simpleCompletionsAPI(
+  api: CompletionsAPI,
+  model: string,
+): SimpleCompletionsAPI {
+  return {
+    chat: async (messages: ChatCompletionMessageParam[]): Promise<string> => {
+      const response = await api.create({
+        model,
+        messages,
+        stream: false,
+      });
+      if (!response.choices[0].message?.content) {
+        throw new Error(
+          "Unexpected result from OpenAI: " + JSON.stringify(response),
+        );
+      }
+      return response.choices[0].message.content;
+    },
+    stream: async (
+      messages: ChatCompletionMessageParam[],
+    ): Promise<AsyncIterable<string>> => {
+      const response = await api.create({
+        model,
+        messages,
+        stream: true,
+      });
+      return {
+        async *[Symbol.asyncIterator]() {
+          for await (const chunk of response) {
+            if (chunk.choices[0].delta?.content) {
+              yield chunk.choices[0].delta.content;
+            }
+          }
+        },
+      };
+    },
+  };
+}
+
+export type SimpleEmbeddingsAPI = {
+  embed: (text: string) => Promise<Array<number>>;
+  embedBatch: (texts: string[]) => Promise<Array<Array<number>>>;
+};
+
+// const api = simpleEmbeddingsAPI(new OpenAI().embeddings, "text-embedding-ada-002");
+export function simpleEmbeddingsAPI(
+  api: EmbeddingsAPI,
+  model: string,
+): SimpleEmbeddingsAPI {
+  return {
+    embed: async (text: string): Promise<Array<number>> => {
+      const json = await api.create({
+        input: text,
+        model,
+      });
+      return json.data[0].embedding;
+    },
+    embedBatch: async (texts: string[]): Promise<Array<Array<number>>> => {
+      const json = await api.create({
+        input: texts,
+        model,
+      });
+      const allembeddings = json.data;
+      allembeddings.sort((a, b) => a.index - b.index);
+      return allembeddings.map(({ embedding }) => embedding);
+    },
+  };
+}
+
+export function completionsViaFetch(config: Config): CompletionsAPI {
+  return {
     async create(body) {
       if (config.extraStopWords) {
         body.stop = body.stop
@@ -109,36 +184,38 @@ export function completionsViaFetch(
       }
     },
   } as CompletionsAPI;
+}
+
+export function embeddingsViaFetch(config: Config): EmbeddingsAPI {
   return {
-    ...api,
-    simple: async (messages) => {
-      const response = await api.create({
-        model: config.chatModel,
-        messages,
-        stream: false,
+    create: async (body) => {
+      const {
+        result: json,
+        retries,
+        ms,
+      } = await retryWithBackoff(async () => {
+        const result = await fetch(join(config.url, "/v1/embeddings"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...AuthHeaders(),
+          },
+          body: JSON.stringify(body),
+        });
+        if (!result.ok) {
+          const retry =
+            !!config.onError && (await config.onError(result, body.model));
+          throw {
+            retry: retry || shouldRetry(result),
+            error: new Error(
+              `Embedding failed with code ${result.status}: ${await result.text()}`,
+            ),
+          };
+        }
+        return (await result.json()) as CreateEmbeddingResponse;
       });
-      if (!response.choices[0].message?.content) {
-        throw new Error(
-          "Unexpected result from OpenAI: " + JSON.stringify(response),
-        );
-      }
-      return response.choices[0].message.content;
-    },
-    stream: async (messages) => {
-      const response = await api.create({
-        model: config.chatModel,
-        messages,
-        stream: true,
-      });
-      return {
-        async *[Symbol.asyncIterator]() {
-          for await (const chunk of response) {
-            if (chunk.choices[0].delta?.content) {
-              yield chunk.choices[0].delta.content;
-            }
-          }
-        },
-      };
+      console.debug({ usage: json.usage?.total_tokens, retries, ms });
+      return json;
     },
   };
 }
@@ -196,63 +273,3 @@ export const AuthHeaders = (): Record<string, string> =>
   process.env.LLM_API_KEY
     ? { Authorization: "Bearer " + process.env.LLM_API_KEY }
     : {};
-
-export type SimpleEmbeddingsAPI = {
-  simple: (text: string) => Promise<Array<number>>;
-  batch: (texts: string[]) => Promise<Array<Array<number>>>;
-};
-
-export function embeddingsViaFetch(
-  config: Config,
-): EmbeddingsAPI & SimpleEmbeddingsAPI {
-  const api: EmbeddingsAPI = {
-    create: async (body) => {
-      const {
-        result: json,
-        retries,
-        ms,
-      } = await retryWithBackoff(async () => {
-        const result = await fetch(join(config.url, "/v1/embeddings"), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...AuthHeaders(),
-          },
-          body: JSON.stringify(body),
-        });
-        if (!result.ok) {
-          const retry =
-            !!config.onError && (await config.onError(result, body.model));
-          throw {
-            retry: retry || shouldRetry(result),
-            error: new Error(
-              `Embedding failed with code ${result.status}: ${await result.text()}`,
-            ),
-          };
-        }
-        return (await result.json()) as CreateEmbeddingResponse;
-      });
-      console.debug({ usage: json.usage?.total_tokens, retries, ms });
-      return json;
-    },
-  };
-  return {
-    ...api,
-    simple: async (text) => {
-      const json = await api.create({
-        input: text,
-        model: config.embeddingModel,
-      });
-      return json.data[0].embedding;
-    },
-    batch: async (texts) => {
-      const json = await api.create({
-        input: texts,
-        model: config.embeddingModel,
-      });
-      const allembeddings = json.data;
-      allembeddings.sort((a, b) => a.index - b.index);
-      return allembeddings.map(({ embedding }) => embedding);
-    },
-  };
-}
