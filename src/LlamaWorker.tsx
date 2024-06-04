@@ -6,12 +6,11 @@ import { Input } from "./components/ui/input";
 import { ConvexClient } from "convex/browser";
 import { api } from "@convex/_generated/api";
 import { FunctionReturnType } from "convex/server";
-import { WorkerHeartbeatInterval } from "@shared/config";
-import { doWork, hasDelimeter, waitForWork } from "../shared/worker";
 import { useLocalStorage, useSessionStorage } from "usehooks-ts";
 import { Link } from "react-router-dom";
 import LLMWorker from "./lib/llamaWebWorker?worker&inline";
-import { Completions } from "@shared/llm";
+import { doWork, waitForWork } from "@shared/worker";
+import type { CompletionsAPI } from "@shared/openai_types";
 
 type LoadingState = { progress: number; text: string };
 
@@ -87,7 +86,7 @@ class Llama {
           work,
           this.client,
           this.apiKey,
-          this.engine.chat.completions as Completions,
+          this.engine.chat.completions as CompletionsAPI,
           MODEL,
         );
         console.log("Finished:", Date.now() - start, "ms");

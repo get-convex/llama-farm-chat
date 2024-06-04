@@ -2,19 +2,16 @@ import inquirer from "inquirer";
 import dotenv from "dotenv";
 import { ConvexClient } from "convex/browser";
 import { api } from "../convex/_generated/api";
-import {
-  chatCompletions,
-  LLM_CONFIG,
-  pullOllama,
-  retryWithBackoff,
-} from "../shared/llm";
+import { retryWithBackoff } from "@shared/retryWithBackoff";
+import { CONFIG, completions, pullOllama } from "./ollama";
 import { appendFile } from "fs";
 import { doWork } from "../shared/worker";
 import { waitForWork } from "../shared/worker";
+
 dotenv.config({ path: [".env", ".env.local"] });
 
 async function main() {
-  const key = process.env.WORKER_API_KEY || undefined;
+  const key = process.env.WORKER_API_KEY?.replace('"', "") || undefined;
   const url = process.env.VITE_CONVEX_URL || undefined;
   const answers = await inquirer.prompt(
     [
@@ -32,7 +29,6 @@ async function main() {
     { apiKey: key, convexUrl: url },
   );
   const { apiKey, convexUrl } = answers;
-  console.log(apiKey, convexUrl);
   if (!key) {
     appendFile(".env", `\nWORKER_API_KEY=${apiKey}\n`, (err) => {
       if (err) throw err;
@@ -54,7 +50,7 @@ async function main() {
   console.log("Loading llama3...");
   await retryWithBackoff(async () => {
     try {
-      const resp = await pullOllama("llama3");
+      const resp = await pullOllama(CONFIG.chatModel);
       console.log(await resp.text());
     } catch (e) {
       console.error(e);
@@ -69,13 +65,7 @@ async function main() {
     let work = await client.mutation(api.workers.giveMeWork, { apiKey });
     while (work) {
       const start = Date.now();
-      work = await doWork(
-        work,
-        client,
-        apiKey,
-        chatCompletions,
-        LLM_CONFIG.chatModel,
-      );
+      work = await doWork(work, client, apiKey, completions, CONFIG.chatModel);
       console.log("Finished:", Date.now() - start, "ms");
     }
   }

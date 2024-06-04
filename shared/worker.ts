@@ -1,12 +1,8 @@
 import { api } from "@convex/_generated/api";
 import { ConvexClient } from "convex/browser";
 import { FunctionReturnType } from "convex/server";
-import { Completions } from "./llm";
+import { CompletionsAPI } from "./openai_types";
 import { completionModels, WorkerHeartbeatInterval } from "./config";
-import { OpenAI } from "openai";
-
-const o = new OpenAI();
-o.chat;
 
 export function hasDelimeter(response: string) {
   return (
@@ -45,7 +41,7 @@ export async function doWork(
   work: FunctionReturnType<typeof api.workers.giveMeWork>,
   client: ConvexClient,
   apiKey: string,
-  completions: Completions,
+  completions: CompletionsAPI,
   defaultModel: string,
 ) {
   if (!work) {
@@ -94,14 +90,12 @@ export async function doWork(
             apiKey,
             jobId,
           });
-          console.log(response);
           response = "";
         }
       }
       if (response) console.debug("part:", response);
       if (!response && totalLength === 0)
         throw { error: "No response", retry: true };
-      console.debug("Finished streaming");
       return client.mutation(api.workers.submitWork, {
         message: response,
         state: "success",
