@@ -123,8 +123,8 @@ export function completionsViaFetch(config: Config): CompletionsAPI {
           : config.extraStopWords;
       }
 
-      const { result, retries, ms } = await retryWithBackoff(async () => {
-        const result = await fetch(join(config.url, "/v1/chat/completions"), {
+      const { result: response, retries } = await retryWithBackoff(async () => {
+        const response = await fetch(join(config.url, "/v1/chat/completions"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -132,26 +132,26 @@ export function completionsViaFetch(config: Config): CompletionsAPI {
           },
           body: JSON.stringify(body),
         });
-        if (!result.ok) {
+        if (!response.ok) {
           const retry =
-            !!config.onError && (await config.onError(result, body.model));
+            !!config.onError && (await config.onError(response, body.model));
 
-          const error = await result.text();
+          const error = await response.text();
           console.error({ error });
           throw {
-            retry: retry || shouldRetry(result),
+            retry: retry || shouldRetry(response),
             error: new Error(
-              `Chat completion failed with code ${result.status}: ${error}`,
+              `Chat completion failed with code ${response.status}: ${error}`,
             ),
           };
         }
-        return result;
+        return response;
       });
       if (retries > 0) {
-        console.log("Retries:", retries, "ms:", ms);
+        console.log("Retries: ", retries);
       }
       if (body.stream) {
-        const body = result.body;
+        const body = response.body;
         if (!body) throw new Error("No body in response");
         return {
           async *[Symbol.asyncIterator]() {
@@ -174,7 +174,7 @@ export function completionsViaFetch(config: Config): CompletionsAPI {
           },
         } as AsyncIterable<ChatCompletionChunk>;
       } else {
-        const json = (await result.json()) as ChatCompletion;
+        const json = (await response.json()) as ChatCompletion;
         if (json.choices[0].message?.content === undefined) {
           throw new Error(
             "Unexpected result from OpenAI: " + JSON.stringify(json),
@@ -231,7 +231,7 @@ function shouldRetry(response: Response) {
   ); // Internal server error
 }
 
-export async function* splitStream(stream: ReadableStream<Uint8Array>) {
+async function* splitStream(stream: ReadableStream<Uint8Array>) {
   const reader = stream.getReader();
   let lastFragment = "";
   try {
@@ -269,7 +269,7 @@ export function join(base: string, path: string) {
   }
 }
 
-export const AuthHeaders = (): Record<string, string> =>
+const AuthHeaders = (): Record<string, string> =>
   process.env.LLM_API_KEY
     ? { Authorization: "Bearer " + process.env.LLM_API_KEY }
     : {};
