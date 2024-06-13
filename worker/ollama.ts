@@ -5,7 +5,7 @@ import {
   SimpleEmbeddingsAPI,
   simpleCompletionsAPI,
 } from "@shared/llm";
-import { retryWithBackoff } from "@shared/retryWithBackoff";
+import { retryWithBackoff } from "@shared/llm";
 import { Embedding, EmbeddingsAPI } from "@shared/openai_types";
 
 const CHAT_MODEL = "llama3";

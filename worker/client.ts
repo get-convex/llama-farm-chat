@@ -2,7 +2,7 @@ import inquirer from "inquirer";
 import dotenv from "dotenv";
 import { ConvexClient } from "convex/browser";
 import { api } from "../convex/_generated/api";
-import { retryWithBackoff } from "@shared/retryWithBackoff";
+import { retryWithBackoff } from "@shared/llm";
 import { CONFIG, completions, pullOllama } from "./ollama";
 import { appendFile } from "fs";
 import { doWork } from "../shared/worker";
