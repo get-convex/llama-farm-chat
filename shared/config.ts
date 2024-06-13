@@ -1,13 +1,13 @@
-const Second = 1000;
+const SECOND = 1000;
 
-export const StreamResponses = true;
+export const STREAM_RESPONSES = true;
 // How long the server should wait before considering a request failed.
-export const WorkerDeadTimeout = 60 * Second;
+export const WORKER_DEAD_TIMEOUT = 60 * SECOND;
 // How often the worker should send a heartbeat to the server.
-export const WorkerHeartbeatInterval = 20 * Second;
+export const WORKER_HEARTBEAT_INTERVAL = 20 * SECOND;
 // How many times should a job be retried when a client reports failure.
 // Note: this doesn't capture workers considered dead from timeouts.
-export const MaxJobRetries = 3;
+export const MAX_JOB_RETRIES = 3;
 
 // You can add / remove whatever models you want to use here.
 export const completionModels = [
@@ -21,5 +21,5 @@ export type CompletionModels = (typeof completionModels)[number];
 
 export const Emojis =
   "😀 😃 😄 😁 😆 😅 😂 🤣 🥲 🥹 😊 😇 🙂 🙃 😉 😌 😍 🥰 😘 😗 😙 😚 😋 😛 😝 😜 🤪 😎 🥸 🤩 🥳 😏 😳 🤔 🫢 🤭 🤫 😶 🫠 😮 🤤 😵‍💫 🥴 🤑 🤠".split(
-    " "
+    " ",
   );

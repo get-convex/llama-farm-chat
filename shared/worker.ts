@@ -1,8 +1,8 @@
 import { api } from "@convex/_generated/api";
 import { ConvexClient } from "convex/browser";
 import { FunctionReturnType } from "convex/server";
-import { CompletionsAPI } from "./llm";
-import { completionModels, WorkerHeartbeatInterval } from "./config";
+import { SimpleCompletionsAPI } from "./llm";
+import { WORKER_HEARTBEAT_INTERVAL } from "./config";
 
 export function hasDelimeter(response: string) {
   return (
@@ -41,20 +41,10 @@ export async function doWork(
   work: FunctionReturnType<typeof api.workers.giveMeWork>,
   client: ConvexClient,
   apiKey: string,
-  completions: CompletionsAPI,
-  defaultModel: string,
+  completions: SimpleCompletionsAPI,
 ) {
   if (!work) {
     return null;
-  }
-  const model = work.model ?? defaultModel;
-  if (!completionModels.find((m) => m === model)) {
-    await client.mutation(api.workers.submitWork, {
-      message: `Invalid model: ${model}`,
-      state: "failed",
-      apiKey,
-      jobId: work.jobId,
-    });
   }
   console.debug(work);
   const { messages, jobId } = work;
@@ -64,22 +54,14 @@ export async function doWork(
       .mutation(api.workers.imStillWorking, { apiKey, jobId })
       .then(console.log)
       .catch(console.error);
-  }, WorkerHeartbeatInterval);
+  }, WORKER_HEARTBEAT_INTERVAL);
   try {
     if (work.stream) {
-      const completion = await completions.create({
-        stream: true,
-        messages,
-        model,
-        temperature: 0.5,
-      });
+      const completion = await completions.chatStream(messages);
       let totalLength = 0;
       let response = "";
-      for await (const chunk of completion) {
-        const part = chunk.choices[0].delta.content;
-        if (part) {
-          response += part;
-        }
+      for await (const part of completion) {
+        response += part;
         if (hasDelimeter(response)) {
           console.debug("part:", response);
           totalLength += response.length;
@@ -102,15 +84,10 @@ export async function doWork(
         jobId,
       });
     } else {
-      const completion = await completions.create({
-        stream: false,
-        model,
-        messages,
-      });
-      const message = completion.choices[0].message;
+      const message = await completions.chat(messages);
       console.debug("Response:", message);
       return client.mutation(api.workers.submitWork, {
-        message: message.content ?? "",
+        message,
         state: "success",
         apiKey,
         jobId,

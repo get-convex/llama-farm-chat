@@ -8,8 +8,8 @@ import {
 import { retryWithBackoff } from "@shared/llm";
 import type { Embedding, EmbeddingsAPI } from "@shared/llm";
 
-const CHAT_MODEL = "llama3";
-const EMBEDDING_MODEL = "mxbai-embed-large"; // dim 1024
+export const CHAT_MODEL = "llama3";
+export const EMBEDDING_MODEL = "mxbai-embed-large"; // dim 1024
 
 export const CONFIG: Config = {
   url: "http://127.0.0.1:11434",

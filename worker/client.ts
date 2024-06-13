@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import { ConvexClient } from "convex/browser";
 import { api } from "../convex/_generated/api";
 import { retryWithBackoff } from "@shared/llm";
-import { CONFIG, completions, pullOllama } from "./ollama";
+import { CHAT_MODEL, chat, chatStream, pullOllama } from "./ollama";
 import { appendFile } from "fs";
 import { doWork, waitForWork } from "@shared/worker";
 
@@ -49,7 +49,7 @@ async function main() {
   console.log("Loading llama3...");
   await retryWithBackoff(async () => {
     try {
-      const resp = await pullOllama(CONFIG.chatModel);
+      const resp = await pullOllama(CHAT_MODEL);
       console.log(await resp.text());
     } catch (e) {
       console.error(e);
@@ -64,7 +64,7 @@ async function main() {
     let work = await client.mutation(api.workers.giveMeWork, { apiKey });
     while (work) {
       const start = Date.now();
-      work = await doWork(work, client, apiKey, completions, CONFIG.chatModel);
+      work = await doWork(work, client, apiKey, { chat, chatStream });
       console.log("Finished:", Date.now() - start, "ms");
     }
   }

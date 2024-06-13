@@ -14,7 +14,7 @@ import {
 } from "convex-helpers/server/customFunctions";
 import { asyncMap, pruneNull } from "convex-helpers";
 import { Scheduler } from "convex/server";
-import { MaxJobRetries, WorkerDeadTimeout } from "../shared/config";
+import { MAX_JOB_RETRIES, WORKER_DEAD_TIMEOUT } from "../shared/config";
 import { literals } from "convex-helpers/validators";
 
 export async function addJob(
@@ -150,7 +150,7 @@ async function scheduleJanitor(
     await ctx.scheduler.cancel(job.janitorId);
   }
   const janitorId = await ctx.scheduler.runAfter(
-    WorkerDeadTimeout,
+    WORKER_DEAD_TIMEOUT,
     internal.workers.markAsDead,
     {
       jobId: job._id,
@@ -240,7 +240,7 @@ export const submitWork = workerMutation({
               )
               .collect()
           ).length;
-          if (attempts <= MaxJobRetries) {
+          if (attempts <= MAX_JOB_RETRIES) {
             await addJob(ctx, message._id, job.work.stream);
           }
         }

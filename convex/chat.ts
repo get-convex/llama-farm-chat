@@ -4,7 +4,7 @@ import { DatabaseReader } from "./_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { userMutation, userQuery } from "./users";
 import { asyncMap, pruneNull } from "convex-helpers";
-import { completionModels, StreamResponses } from "@shared/config";
+import { completionModels, STREAM_RESPONSES } from "@shared/config";
 import { literals } from "convex-helpers/validators";
 import { addJob } from "./workers";
 import { defineRateLimits } from "convex-helpers/server/rateLimit";
@@ -265,7 +265,7 @@ export const sendMessage = userMutation({
       state: "generating",
       threadId,
     });
-    await addJob(ctx, messageId, StreamResponses);
+    await addJob(ctx, messageId, STREAM_RESPONSES);
   },
 });
 

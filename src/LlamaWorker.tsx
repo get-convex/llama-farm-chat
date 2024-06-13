@@ -10,7 +10,7 @@ import { useLocalStorage, useSessionStorage } from "usehooks-ts";
 import { Link } from "react-router-dom";
 import LLMWorker from "./lib/llamaWebWorker?worker&inline";
 import { doWork, waitForWork } from "@shared/worker";
-import type { CompletionsAPI } from "@shared/llm";
+import { simpleCompletionsAPI, type CompletionsAPI } from "@shared/llm";
 
 type LoadingState = { progress: number; text: string };
 
@@ -78,6 +78,7 @@ class Llama {
         });
       },
     } as CompletionsAPI;
+    const simple = simpleCompletionsAPI(completions, MODEL);
     while (!this.disposed) {
       const stats = await this.engine.runtimeStatsText();
       if (this.disposed) return;
@@ -92,7 +93,7 @@ class Llama {
       while (work && !this.disposed) {
         const start = Date.now();
         this.stateCb({ type: "working", job: work });
-        work = await doWork(work, this.client, this.apiKey, completions, MODEL);
+        work = await doWork(work, this.client, this.apiKey, simple);
         console.log("Finished:", Date.now() - start, "ms");
       }
     }
