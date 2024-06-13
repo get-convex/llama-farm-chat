@@ -6,7 +6,7 @@ import {
   simpleCompletionsAPI,
 } from "@shared/llm";
 import { retryWithBackoff } from "@shared/llm";
-import { Embedding, EmbeddingsAPI } from "@shared/openai_types";
+import type { Embedding, EmbeddingsAPI } from "@shared/llm";
 
 const CHAT_MODEL = "llama3";
 const EMBEDDING_MODEL = "mxbai-embed-large"; // dim 1024
@@ -26,7 +26,10 @@ export const CONFIG: Config = {
 
 export const completions = completionsViaFetch(CONFIG);
 
-export const { chat, stream } = simpleCompletionsAPI(completions, CHAT_MODEL);
+export const { chat, chatStream } = simpleCompletionsAPI(
+  completions,
+  CHAT_MODEL,
+);
 
 export const embeddings: EmbeddingsAPI = {
   async create(body) {

@@ -10,7 +10,7 @@ import { useLocalStorage, useSessionStorage } from "usehooks-ts";
 import { Link } from "react-router-dom";
 import LLMWorker from "./lib/llamaWebWorker?worker&inline";
 import { doWork, waitForWork } from "@shared/worker";
-import type { CompletionsAPI } from "@shared/openai_types";
+import type { CompletionsAPI } from "@shared/llm";
 
 type LoadingState = { progress: number; text: string };
 

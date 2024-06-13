@@ -1,7 +1,7 @@
 import { api } from "@convex/_generated/api";
 import { ConvexClient } from "convex/browser";
 import { FunctionReturnType } from "convex/server";
-import { CompletionsAPI } from "./openai_types";
+import { CompletionsAPI } from "./llm";
 import { completionModels, WorkerHeartbeatInterval } from "./config";
 
 export function hasDelimeter(response: string) {

@@ -5,8 +5,7 @@ import { api } from "../convex/_generated/api";
 import { retryWithBackoff } from "@shared/llm";
 import { CONFIG, completions, pullOllama } from "./ollama";
 import { appendFile } from "fs";
-import { doWork } from "../shared/worker";
-import { waitForWork } from "../shared/worker";
+import { doWork, waitForWork } from "@shared/worker";
 
 dotenv.config({ path: [".env", ".env.local"] });
 
