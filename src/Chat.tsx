@@ -1,15 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { api } from "@convex/_generated/api";
-import { Emojis } from "@shared/config";
 import Markdown from "marked-react";
 import DOMPurify from "dompurify";
 import {
-  useSessionIdArg,
-  useSessionMutation,
-  useSessionQuery,
-} from "convex-helpers/react/sessions";
-import { usePaginatedQuery } from "convex/react";
+  Authenticated,
+  Unauthenticated,
+  useMutation,
+  usePaginatedQuery,
+  useQuery,
+} from "convex/react";
 import dayjs from "dayjs";
 import React, { MouseEvent, useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -17,13 +17,12 @@ import { cn } from "./lib/utils";
 import { useStickyChat } from "./useStickyChat";
 import { toast } from "./components/ui/use-toast";
 import { isRateLimitError } from "convex-helpers/server/rateLimit";
-import { ConvexError } from "convex/values";
+import { SignIn, SignOut } from "./SignIn";
 
 export function Chat() {
   const { uuid } = useParams();
-  const me = useSessionQuery(api.users.me);
-  const updateName = useSessionMutation(api.users.updateName);
-  const threads = useSessionQuery(api.chat.listThreads);
+  const me = useQuery(api.users.me);
+  const threads = useQuery(api.chat.listThreads);
   const navigate = useNavigate();
   useEffect(() => {
     if (!uuid && threads?.length) {
@@ -31,62 +30,58 @@ export function Chat() {
     }
   }, [uuid, threads, navigate]);
   const thread = threads?.find((t) => t.uuid === uuid);
-  const shuffleName = useCallback(() => {
-    updateName({
-      name: Emojis[Math.floor(Math.random() * Emojis.length)],
-    }).catch((e) => {
-      if (isRateLimitError(e)) {
-        toast({
-          title: "You're changing names too quickly",
-          description: `You can change your name again in ${dayjs(e.data.retryAt).fromNow()}.`,
-        });
-      } else if (e instanceof ConvexError && e.data.kind === "MAX_GROUP_SIZE") {
-        toast({
-          title: "Joining this group failed",
-          description: "This group is at capacity. Try making a new one.",
-        });
-      } else {
-        console.error(e);
-      }
-    });
-  }, [updateName]);
 
   return (
     <div className="flex h-full flex-col justify-between">
       <div className="flex h-[4rem] w-full items-center justify-between bg-my-light-green p-4">
         <h2 className="text-2xl">{thread?.names.join("+")}</h2>
-        <Button
-          size="icon"
-          className="text-4xl hover:bg-transparent"
-          variant="ghost"
-          onClick={shuffleName}
-        >
-          {me?.name}
-        </Button>
+        <Unauthenticated>
+          <SignIn />
+        </Unauthenticated>
+        <Authenticated>
+          <div className="flex gap-2">
+            {me && me.isAnonymous === false ? (
+              <img
+                src={me.image}
+                alt={me.name}
+                title={me.name}
+                className="h-8 w-8 rounded-full"
+              />
+            ) : (
+              <div className="text-4xl">{me?.name}</div>
+            )}
+            <SignOut />
+          </div>
+        </Authenticated>
       </div>
 
-      {uuid ? (
-        <>
-          <Messages />
-          {thread ? <SendMessage /> : <JoinThread />}
-        </>
-      ) : null}
+      <Authenticated>
+        {uuid ? (
+          <>
+            <Messages />
+            {thread ? <SendMessage /> : <JoinThread />}
+          </>
+        ) : null}
+      </Authenticated>
+      <Unauthenticated>
+        <div className="mt-4 p-2 text-center">
+          <SignIn />
+        </div>
+      </Unauthenticated>
     </div>
   );
 }
 
 function Messages() {
   const { uuid } = useParams();
-  const me = useSessionQuery(api.users.me);
+  const me = useQuery(api.users.me);
   const {
     results: messages,
     loadMore,
     status,
-  } = usePaginatedQuery(
-    api.chat.getThreadMessages,
-    useSessionIdArg(uuid ? { uuid } : "skip"),
-    { initialNumItems: 20 },
-  );
+  } = usePaginatedQuery(api.chat.getThreadMessages, uuid ? { uuid } : "skip", {
+    initialNumItems: 20,
+  });
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement>();
   const handleScrollContainer = useCallback((node: HTMLDivElement) => {
     setScrollContainer(node);
@@ -119,6 +114,13 @@ function Messages() {
                   <span className="my-auto rounded-full bg-my-light-green  p-2 py-1.5 text-2xl">
                     🦙
                   </span>
+                ) : message.image ? (
+                  <img
+                    src={message.image}
+                    alt={message.name}
+                    title={message.name}
+                    className="h-8 w-8 rounded-full"
+                  />
                 ) : (
                   <span
                     title={message.name}
@@ -186,7 +188,7 @@ function Messages() {
 
 function JoinThread() {
   const { uuid } = useParams();
-  const joinThread = useSessionMutation(api.chat.joinThread);
+  const joinThread = useMutation(api.chat.joinThread);
   return uuid ? (
     <div className="mt-4 flex justify-center p-2">
       <Button
@@ -219,7 +221,7 @@ function JoinThread() {
 function SendMessage() {
   const { uuid } = useParams();
   const [messageToSend, setMessageToSend] = useState("");
-  const sendMessage = useSessionMutation(api.chat.sendMessage);
+  const sendMessage = useMutation(api.chat.sendMessage);
   const sendSubmit = useCallback(
     (e: MouseEvent<HTMLFormElement>) => {
       e.preventDefault();

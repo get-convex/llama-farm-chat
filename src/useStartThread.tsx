@@ -1,14 +1,14 @@
 import { MouseEvent, useCallback, useState } from "react";
 import { api } from "@convex/_generated/api";
-import { useSessionMutation } from "convex-helpers/react/sessions";
 import { isRateLimitError } from "convex-helpers/server/rateLimit";
 import { useNavigate } from "react-router-dom";
 import { toast } from "./components/ui/use-toast";
 import dayjs from "dayjs";
+import { useMutation } from "convex/react";
 
 export function useStartThread() {
   const navigate = useNavigate();
-  const startThread = useSessionMutation(api.chat.startThread);
+  const startThread = useMutation(api.chat.startThread);
   const [startingThread, setStartingThread] = useState(false);
 
   const startThreadHandler = useCallback(

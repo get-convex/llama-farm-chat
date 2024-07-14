@@ -1,5 +1,6 @@
-// import { makeMigration } from "convex-helpers/server/migrations";
-// const migration = makeMigration(internalMutation);
+import { makeMigration } from "convex-helpers/server/migrations";
+import { internalMutation } from "./_generated/server";
+const migration = makeMigration(internalMutation);
 
 /**
  * Remove the retries field from jobs.
@@ -11,3 +12,16 @@ export const snipRetries = migration({
   },
 });
 */
+
+/**
+ * Add isAnonymous to existing users.
+ * Future users will log in and have isAnonymous set to false.
+ * Then maybe we'll reintroduce anonymous users explicitly.
+ */
+export const makeAnonymousUsers = migration({
+  table: "users",
+  migrateOne(ctx, doc) {
+    if ("isAnonymous" in doc) return;
+    return { isAnonymous: true };
+  },
+});

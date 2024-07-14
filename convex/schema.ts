@@ -14,10 +14,10 @@ export default defineSchema(
     ...authTables,
     users: defineTable(
       v.union(
-        // v.object({
-        //   isAnonymous: v.literal(true),
-        //   name: v.string(), // emoji /
-        // }),
+        v.object({
+          isAnonymous: v.optional(v.literal(true)),
+          name: v.string(),
+        }),
         v.object({
           isAnonymous: v.literal(false),
           name: v.string(),

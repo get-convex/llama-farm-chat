@@ -11,9 +11,23 @@ import { Outlet, useLocation } from "react-router-dom";
 import { Threads } from "./Threads";
 import { LlamaStatus } from "./LlamaWorker";
 import { useStartThread } from "./useStartThread";
+import { Authenticated, useConvex, useConvexAuth } from "convex/react";
+import { api } from "@convex/_generated/api";
 
 export default function App() {
   const [startThreadHandler, startingThread] = useStartThread();
+  const { isAuthenticated } = useConvexAuth();
+  const convex = useConvex();
+  useEffect(() => {
+    const sessionId = localStorage.getItem("convex-session-id");
+    if (isAuthenticated && sessionId) {
+      void (async () => {
+        if (await convex.mutation(api.users.captureAnonUser, { sessionId })) {
+          localStorage.removeItem("convex-session-id");
+        }
+      })();
+    }
+  }, [isAuthenticated, convex]);
 
   return (
     <div className="flex h-screen flex-col bg-my-white-baja dark:bg-black">
@@ -23,14 +37,16 @@ export default function App() {
             <ThreadsMenuButton />
             <h1 className="text-2xl">🦙 farm</h1>
             <div className="flex">
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={startThreadHandler}
-                disabled={startingThread}
-              >
-                <PlusIcon className="h-5 w-5" />
-              </Button>
+              <Authenticated>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={startThreadHandler}
+                  disabled={startingThread}
+                >
+                  <PlusIcon className="h-5 w-5" />
+                </Button>
+              </Authenticated>
             </div>
           </div>
           <div className="hidden flex-1 flex-col md:block">

@@ -35,12 +35,12 @@ export const { checkRateLimit, rateLimit, resetRateLimit } = defineRateLimits({
 
 export const listThreads = userQuery({
   args: {},
-  handler: async (ctx) => {
-    if (!ctx.userId) return [];
+  handler: async ({ userId, ...ctx }) => {
+    if (!userId) return [];
     const threads = await asyncMap(
       ctx.db
         .query("threadMembers")
-        .withIndex("userId", (q) => q.eq("userId", ctx.userId!))
+        .withIndex("userId", (q) => q.eq("userId", userId))
         .order("desc")
         .collect(),
       async (m) => {
@@ -180,6 +180,7 @@ export const getThreadMessages = userQuery({
           id: msg._id,
           userId: user?._id,
           name: user?.name || model || msg.author.role,
+          image: user?.isAnonymous === false ? user.image : null,
           message: msg.message,
           role: msg.author.role,
           state: job?.status ?? msg.state,
