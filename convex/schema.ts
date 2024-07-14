@@ -6,13 +6,26 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { literals } from "convex-helpers/validators";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
+import { authTables } from "@convex-dev/auth/server";
 
 export default defineSchema(
   {
     ...rateLimitTables,
-    users: defineTable({
-      name: v.string(),
-    }),
+    ...authTables,
+    users: defineTable(
+      v.union(
+        // v.object({
+        //   isAnonymous: v.literal(true),
+        //   name: v.string(), // emoji /
+        // }),
+        v.object({
+          isAnonymous: v.literal(false),
+          name: v.string(),
+          email: v.string(),
+          image: v.optional(v.string()),
+        }),
+      ),
+    ),
     sessions: defineTable({
       userId: v.id("users"),
       sessionId: v.string(),

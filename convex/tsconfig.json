@@ -15,7 +15,7 @@
     "forceConsistentCasingInFileNames": true,
     "allowSyntheticDefaultImports": true,
     "module": "ESNext",
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
     "isolatedModules": true,
     "noEmit": true,
     "paths": {
@@ -24,6 +24,6 @@
     }
 
   },
-  "include": ["./**/*", "../shared/config.ts"],
+  "include": ["./**/*"],
   "exclude": ["./_generated"]
 }

@@ -1,4 +1,4 @@
-import { ConvexProvider, ConvexReactClient } from "convex/react";
+import { ConvexReactClient } from "convex/react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { EmptyPage } from "./EmptyPage";
@@ -12,6 +12,7 @@ import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { LlamaWorker, LlamaProvider } from "./LlamaWorker";
 import { Toaster } from "./components/ui/toaster";
+import { ConvexAuthProvider } from "@convex-dev/auth/react";
 dayjs.extend(relativeTime);
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
@@ -42,12 +43,12 @@ const router = createBrowserRouter(
 );
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
-  <ConvexProvider client={convex}>
+  <ConvexAuthProvider client={convex}>
     <LlamaProvider>
       <SessionProvider useStorage={useLocalStorage}>
         <RouterProvider router={router} />
         <Toaster />
       </SessionProvider>
     </LlamaProvider>
-  </ConvexProvider>,
+  </ConvexAuthProvider>,
 );

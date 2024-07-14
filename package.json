@@ -14,6 +14,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@auth/core": "^0.34.1",
+    "@convex-dev/auth": "^0.0.36",
     "@hookform/resolvers": "^3.3.2",
     "@mlc-ai/web-llm": "^0.2.35",
     "@radix-ui/react-accordion": "^1.1.2",
@@ -47,8 +49,8 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",
     "cmdk": "^0.2.0",
-    "convex": "^1.12.1",
-    "convex-helpers": "^0.1.41",
+    "convex": "^1.13.0",
+    "convex-helpers": "^0.1.47",
     "date-fns": "^2.30.0",
     "dayjs": "^1.11.11",
     "dompurify": "^3.1.2",
