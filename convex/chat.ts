@@ -125,6 +125,14 @@ export const joinThread = userMutation({
           kind: "MAX_GROUP_SIZE",
         });
       }
+      if (members.length === 1) {
+        await ctx.db.insert("messages", {
+          author: { role: "assistant", context: [] },
+          state: "success",
+          message: "Welcome! From now on, I'll only respond when I see @llama",
+          threadId: thread._id,
+        });
+      }
       await ctx.db.insert("threadMembers", {
         threadId: thread._id,
         userId: ctx.userId,
@@ -231,6 +239,10 @@ export const sendMessage = userMutation({
     if (!ok) {
       return { retryAt };
     }
+    const membership = await getMembership(ctx, threadId, ctx.userId);
+    if (!membership) {
+      throw new Error("Not a member of this thread.");
+    }
     await ctx.db.insert("messages", {
       message: args.message,
       threadId,
@@ -238,7 +250,13 @@ export const sendMessage = userMutation({
       state: "success",
     });
 
-    if (args.skipAI || (await anyPendingMessage(ctx, ctx.userId))) return;
+    if (
+      args.skipAI ||
+      (!args.message.includes("@llama") &&
+        (await moreThanTwoMembers(ctx, threadId))) ||
+      (await anyPendingMessage(ctx, ctx.userId))
+    )
+      return;
     const systemContext = await messagesQuery(ctx, threadId)
       .filter((q) => q.eq(q.field("author.role"), "system"))
       .order("desc")
@@ -269,6 +287,20 @@ export const sendMessage = userMutation({
     await addJob(ctx, messageId, STREAM_RESPONSES);
   },
 });
+
+async function moreThanTwoMembers(
+  ctx: { db: DatabaseReader },
+  threadId: Id<"threads">,
+) {
+  return (
+    (
+      await ctx.db
+        .query("threadMembers")
+        .withIndex("threadId", (q) => q.eq("threadId", threadId))
+        .take(2)
+    ).length > 1
+  );
+}
 
 async function threadFromUuid(
   ctx: { db: DatabaseReader },
