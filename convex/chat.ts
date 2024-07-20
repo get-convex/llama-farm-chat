@@ -107,9 +107,18 @@ export const startThread = userMutation({
 
 export const joinThread = userMutation({
   args: { uuid: v.string() },
-  handler: async (ctx, args) => {
-    const thread = await threadFromUuid(ctx, args.uuid);
-    const existing = await getMembership(ctx, thread._id, ctx.userId);
+  handler: async (ctx, { uuid }) => {
+    const thread = await threadFromUuid(ctx, uuid);
+    if (!thread) {
+      await rateLimit(ctx, {
+        name: "startThread",
+        key: ctx.userId,
+        throws: true,
+      });
+    }
+    const threadId = thread?._id ?? (await ctx.db.insert("threads", { uuid }));
+
+    const existing = await getMembership(ctx, threadId, ctx.userId);
     if (!existing) {
       await rateLimit(ctx, {
         name: "joinThread",
@@ -118,7 +127,7 @@ export const joinThread = userMutation({
       });
       const members = await ctx.db
         .query("threadMembers")
-        .withIndex("threadId", (q) => q.eq("threadId", thread._id))
+        .withIndex("threadId", (q) => q.eq("threadId", threadId))
         .collect();
       if (members.length >= MAX_GROUP_SIZE) {
         throw new ConvexError({
@@ -126,7 +135,7 @@ export const joinThread = userMutation({
         });
       }
       await ctx.db.insert("threadMembers", {
-        threadId: thread._id,
+        threadId,
         userId: ctx.userId,
       });
     }
@@ -137,6 +146,10 @@ export const leaveThread = userMutation({
   args: { uuid: v.string() },
   handler: async (ctx, args) => {
     const thread = await threadFromUuid(ctx, args.uuid);
+    if (!thread) {
+      console.error("Thread not found");
+      return;
+    }
     const existing = await getMembership(ctx, thread._id, ctx.userId);
     if (existing) {
       await ctx.db.delete(existing._id);
@@ -148,6 +161,10 @@ export const getThreadMessages = userQuery({
   args: { uuid: v.string(), paginationOpts: paginationOptsValidator },
   async handler(ctx, args) {
     const thread = await threadFromUuid(ctx, args.uuid);
+    if (!thread) {
+      console.error("Thread not found");
+      return { page: [], continueCursor: null, isDone: true };
+    }
     // All chats are public for now, if you know the uuid.
     // await checkThreadAccess(ctx, thread._id, ctx.userId);
     const results = await messagesQuery(ctx, thread._id)
@@ -222,7 +239,19 @@ export const sendMessage = userMutation({
     skipAI: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const { _id: threadId } = await threadFromUuid(ctx, args.uuid);
+    const thread = await threadFromUuid(ctx, args.uuid);
+    if (!thread) {
+      throw new ConvexError({
+        kind: "THREAD_NOT_FOUND",
+      });
+    }
+    const threadId = thread._id;
+    const membership = await getMembership(ctx, threadId, ctx.userId);
+    if (!membership) {
+      throw new ConvexError({
+        kind: "NOT_IN_THREAD",
+      });
+    }
     const { ok, retryAt } = await rateLimit(ctx, {
       name: "sendMessage",
       key: ctx.userId,
@@ -269,17 +298,11 @@ export const sendMessage = userMutation({
   },
 });
 
-async function threadFromUuid(
-  ctx: { db: DatabaseReader },
-  uuid: string,
-): Promise<Doc<"threads">> {
+async function threadFromUuid(ctx: { db: DatabaseReader }, uuid: string) {
   const thread = await ctx.db
     .query("threads")
     .withIndex("uuid", (q) => q.eq("uuid", uuid))
     .unique();
-  if (!thread) {
-    throw new Error("Thread not found.");
-  }
   return thread;
 }
 
