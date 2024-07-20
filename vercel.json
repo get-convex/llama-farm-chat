@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/llama-farm(.*)",
+      "destination": "/llama-farm"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/"
+    }
+  ]
+}
