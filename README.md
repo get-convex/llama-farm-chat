@@ -62,6 +62,7 @@ cloud by default. Read below for details on
 
 ```sh
 npm i
+npm run setup
 npm run dev
 ```
 
